@@ -1,0 +1,1086 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>工場改善プロジェクト 進捗管理ダッシュボード</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --border:#e3e5ea; --text:#1f2430; --muted:#6b7280;
+  --navy:#1E2761; --ice:#CADCFC;
+  --c-michaku:#9ca3af; --c-kento:#8b5cf6; --c-jisshi:#3b82f6; --c-kouka:#f59e0b;
+  --c-hyojun:#14b8a6; --c-kanryo:#22c55e; --c-danger:#ef4444; --c-warn:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Yu Gothic UI","Meiryo",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+header{background:var(--navy);color:#fff;padding:22px 28px}
+header h1{margin:0 0 4px;font-size:22px;font-weight:700}
+header p{margin:0;color:var(--ice);font-size:13px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+.summary{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center}
+.sum-card .num{font-size:24px;font-weight:700}
+.sum-card .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.loc-summary{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.loc-card{flex:1;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.loc-card .name{font-weight:700;font-size:13px;margin-bottom:6px}
+.loc-bar{height:8px;border-radius:4px;overflow:hidden;display:flex;background:#eee}
+.loc-bar span{height:100%}
+.loc-meta{font-size:11px;color:var(--muted);margin-top:4px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fafbfc}
+.panel-head h2{margin:0;font-size:15px}
+.panel-body{padding:14px 16px}
+.risk-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px;align-items:flex-start}
+.risk-row:last-child{border-bottom:none}
+.risk-id{flex:0 0 46px;font-weight:700;color:var(--navy)}
+.risk-title{flex:0 0 220px;font-weight:600}
+.risk-text{flex:1;color:#444}
+.risk-due{flex:0 0 110px;text-align:right;font-size:12px}
+.overdue{color:var(--c-danger);font-weight:700}
+.soon{color:var(--c-warn);font-weight:700}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab-btn{border:1px solid var(--border);background:#fff;border-radius:20px;padding:6px 14px;font-size:12.5px;cursor:pointer;color:#444}
+.tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip{border:1px solid var(--border);background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;color:#444;user-select:none}
+.chip.active{color:#fff;border-color:transparent}
+input[type=search]{border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;min-width:220px}
+.spacer{flex:1}
+.btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;color:#333}
+.btn:hover{background:#f0f1f3}
+.btn.danger{color:var(--c-danger);border-color:#f3c9c9}
+
+.list{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.card.overdue-card{border-color:#f3c2c2}
+.card-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.idtag{background:var(--navy);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+.loctag{background:#eef1fb;color:var(--navy);border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:600}
+.cattag{background:#f3f3f5;color:#555;border-radius:6px;padding:2px 8px;font-size:11.5px}
+select.loctag{border:none;font-family:inherit;cursor:pointer}
+input.cattag{border:none;font-family:inherit;width:110px}
+.title{font-size:15.5px;font-weight:700;margin:8px 0 4px;flex-basis:100%}
+.title-input{font-size:15.5px;font-weight:700;margin:8px 0 4px;flex-basis:100%;border:none;background:transparent;border-bottom:1px dashed transparent;padding:2px 0;font-family:inherit;color:var(--text);width:100%}
+.title-input:hover{border-bottom-color:var(--border)}
+.title-input:focus{outline:none;border-bottom-color:var(--navy)}
+.meta-line{font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.meta-line b{color:#333;font-weight:600}
+.meta-line input, .meta-line select{border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-size:12.5px;font-family:inherit}
+.del-task{color:var(--c-danger);cursor:pointer;font-size:11.5px;margin-left:auto}
+
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:16px;padding:4px 12px;font-size:12.5px;font-weight:700;color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.field-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.box{background:#f8f9fb;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.box.criteria{background:#eef8f4;border-color:#cdeade}
+.box.risk{background:#fff6ec;border-color:#f3ddb8}
+textarea{width:100%;border:none;background:transparent;resize:vertical;font-family:inherit;font-size:13px;min-height:44px;padding:0}
+textarea:focus{outline:1px solid var(--navy);border-radius:4px}
+.origlabel{font-size:11px;color:var(--muted)}
+
+.log-toggle{margin-top:10px;font-size:12.5px;color:var(--navy);cursor:pointer;font-weight:600}
+.log-section{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.log-section.open{display:block}
+.log-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.log-form textarea{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-height:36px}
+.log-form label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+.log-entries{display:flex;flex-direction:column;gap:8px}
+.log-entry{background:#fbfbfc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px}
+.log-entry .date{font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;justify-content:space-between}
+.log-entry .del{color:var(--c-danger);cursor:pointer;font-weight:400;font-size:11px}
+.log-entry dl{margin:0;display:grid;grid-template-columns:90px 1fr;gap:2px 8px}
+.log-entry dt{color:var(--muted)}
+.log-entry dd{margin:0}
+footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px}
+.empty{text-align:center;color:var(--muted);padding:30px}
+
+.attach-subtitle{font-size:11px;font-weight:700;color:var(--muted);margin:0 0 6px}
+.attach-subtitle:not(:first-child){margin-top:14px}
+.attach-empty{color:var(--muted);font-size:12px;margin-bottom:8px}
+
+.attach-files{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.attach-item{width:104px;text-align:center;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px}
+.attach-thumb{width:90px;height:90px;object-fit:cover;border-radius:6px;cursor:pointer;display:block;margin:0 auto 4px;background:#eee}
+.attach-file-icon{font-size:34px;cursor:pointer;margin-bottom:4px;line-height:1}
+.attach-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.attach-size{color:var(--muted);font-size:10px}
+.attach-del{color:var(--c-danger);cursor:pointer;font-size:10.5px;display:block;margin-top:2px}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:90%;max-height:90%;border-radius:6px}
+
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.attach-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+.attach-row a{color:var(--navy);text-decoration:none;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-row a:hover{text-decoration:underline}
+.attach-row .attach-del{margin-top:0}
+.attach-icon{font-size:15px;flex:0 0 auto}
+.attach-url{color:var(--muted);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-form{display:flex;gap:6px;flex-wrap:wrap}
+.attach-form input{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12.5px;font-family:inherit}
+.attach-form input.label{flex:0 0 180px}
+.attach-form input.url{flex:1;min-width:200px}
+</style>
+</head>
+<body>
+<header>
+  <h1>工場改善プロジェクト 進捗管理ダッシュボード</h1>
+  <p>商品管理部 各拠点</p>
+</header>
+<div class="wrap">
+
+  <div class="summary" id="summary"></div>
+  <div class="loc-summary" id="locSummary"></div>
+
+  <div class="panel" id="riskPanel">
+    <div class="panel-head" onclick="toggleRiskPanel()">
+      <h2>⚠ 要フォロー・リスク一覧（<span id="riskCount">0</span>件）</h2>
+      <span id="riskCaret">▾</span>
+    </div>
+    <div class="panel-body" id="riskBody"></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="locTabs"></div>
+    <div class="tabs" id="statusChips"></div>
+    <input type="search" id="searchBox" placeholder="ID・改善内容・担当で検索">
+    <span class="spacer"></span>
+    <span id="syncStatus" style="font-size:12px;color:var(--muted)"></span>
+    <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="addNewTask()">＋ 新規タスクを追加</button>
+    <button class="btn" onclick="exportJSON()">JSONエクスポート</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">JSONインポート</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    <button class="btn danger" onclick="resetData()">初期データに戻す</button>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="empty" id="emptyMsg" style="display:none">条件に一致する項目がありません</div>
+
+  <footer>編集内容はこのブラウザに自動保存されます（localStorage）。アップロードしたファイルはこのブラウザのローカルデータベースに保存され、他端末では見えません（JSONエクスポートにも含まれません）。添付リンクは各項目のデータに含まれるため「JSONエクスポート」で他端末にも引き継げます。共同編集したい場合はクラウドリンクの利用をおすすめします。</footer>
+</div>
+
+<div id="lightbox" class="lightbox" onclick="closeLightbox()"><img id="lightboxImg"></div>
+
+<script>
+const STATUS_STAGES = ["未着手","検討中","実施中","効果検証中","標準化","完了"];
+const STATUS_COLORS = {
+  "未着手":"var(--c-michaku)", "検討中":"var(--c-kento)", "実施中":"var(--c-jisshi)",
+  "効果検証中":"var(--c-kouka)", "標準化":"var(--c-hyojun)", "完了":"var(--c-kanryo)"
+};
+const LOC_PALETTE = ["#3b82f6","#f59e0b","#14b8a6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#ec4899"];
+function getLocations(){
+  const seen = [];
+  items.forEach(i=>{ if(i.location && !seen.includes(i.location)) seen.push(i.location); });
+  return seen;
+}
+function locColor(loc){
+  const idx = getLocations().indexOf(loc);
+  return LOC_PALETTE[idx>=0? idx%LOC_PALETTE.length : 0];
+}
+
+const DEFAULT_ITEMS = [
+{id:1, location:"合志工場（食肉）", category:"生産性向上", title:"深絞り真空機ドウェルタイム最適化検証", assignee:"松井", dueDate:"2026-06-20", milestoneNote:"",
+ content:"①現行設定値の実測データ取得 ②品質維持可能な最短ドウェルタイムの検証 ③サイクルタイム短縮による生産能力向上効果の算出",
+ completionCriteria:"③まで実施し、生産性向上効果（％）を数値で確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"ドウェルタイム設定を見直し、真空・シール工程のサイクルタイムを0.3秒削減。生産性+4%を確認し検証完了。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:2, location:"合志工場（食肉）", category:"人員最適", title:"鶏肉加工ライン省人化・レイアウト改善", assignee:"松井", dueDate:"2026-06-10", milestoneNote:"",
+ content:"①現行作業動線分析 ②2名削減を前提とした設備配置の見直し ③生産能力維持条件の検証",
+ completionCriteria:"③生産能力維持条件の検証まで完了していること（レイアウト変更だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"作業動線の見直しと2名削減後の配置図は完成（鶏肉に加え豚肉製造にも展開可）。ただし③は豚肉の加工がまだのため生産能力維持条件を確認できておらず未達成。想定コスト削減効果：約58,800円/年（約4,900円/月）。",
+ risk:"③生産能力維持条件の検証が豚肉加工未実施のため確認できていない → 豚肉加工開始後に検証を実施し、完了判定はその後に行う", weeklyLog:[], links:[]},
+
+{id:3, location:"合志工場（食肉）", category:"在庫管理", title:"製品・原料在庫適正化", assignee:"松井・野村・倉岡", dueDate:"2026-09-30", milestoneNote:"ふるさと納税の駆け込み需要期までに完了予定",
+ content:"①自社倉庫の棚卸し ②外注倉庫在庫の可視化 ③滞留在庫・過剰在庫の削減計画策定（数値目標化）",
+ completionCriteria:"削減目標を「◯％削減」の形で数値化し、その達成をもって完了とする",
+ originalLabel:"進行中", status:"実施中",
+ latestUpdate:"炭火鶏・うなぎ・馬刺し・ペットフード等の滞留在庫についてEC／ふるさと納税での販売強化を継続中。豚・鶏の販売計画を数値化して管理中。削減目標は次回報告までに数値化して設定する。",
+ risk:"在庫削減の数値目標が未設定で、進捗を定量的に追えていない → 次回報告までに削減目標％を確定させる", weeklyLog:[], links:[]},
+
+{id:4, location:"合志工場（食肉）", category:"品質管理", title:"商品別解凍時間標準化", assignee:"松井・野村・倉岡", dueDate:"2026-06-15", milestoneNote:"",
+ content:"①商品ごとの解凍条件調査 ②標準解凍時間の設定 ③製造計画・標準書への反映と教育",
+ completionCriteria:"標準解凍時間を標準書に反映し、現場教育まで完了していること",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"冷凍商品の品温維持を前提に、商品別に常温環境下での許容作業時間を検証。出荷作業は原則45分以内を目安とし、商品別の品温上昇データ・季節要因・出荷場温度を踏まえ必要に応じて保冷対策・作業手順を見直す運用とした。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:5, location:"合志工場（食肉）", category:"物流改善", title:"出荷場レイアウト変更", assignee:"野村・松井", dueDate:"2026-07-15", milestoneNote:"稟議承認予定日・着工予定日は未設定（要確認）",
+ content:"①冷蔵・冷凍庫前への移設検討 ②運搬距離短縮効果測定 ③荷役作業効率向上",
+ completionCriteria:"施工完了後、運搬距離短縮効果を測定できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"自社施工を検討していたが、建物オーナー確認の結果、業者施工で進行。ホシザキより概算10万円の見積りを口頭で受領し、現在正式見積書を依頼中。取得後、稟議承認を経て着工予定。",
+ risk:"業者の正式見積り・稟議承認が未完了で着工が遅れる可能性 → 見積り取得後速やかに稟議を通し、着工予定日を確定する", weeklyLog:[], links:[]},
+
+{id:6, location:"合志工場（食肉）", category:"倉庫運用", title:"冷蔵庫スペース有効活用", assignee:"山野", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①冷蔵庫内空きスペース調査 ②米保管運用（10℃前後）の検証 ③保管コスト削減効果試算",
+ completionCriteria:"庫内温度管理課題（結露・カビリスク）を解消し、恒常運用として定着していること",
+ originalLabel:"進行中（検討案件）", status:"検討中",
+ latestUpdate:"原料保管の配置を見直し5パレット分を確保。ただし現在の庫内設定は0℃のため、玄米を常温環境へ出す際に結露が生じやすく、水分を吸ってカビ・変色の原因となるリスクがある。この温度管理課題の解消をもって完了とする。想定コスト影響：年間約373万円（月311,116円）。",
+ risk:"庫内温度差により結露・カビ発生リスクが残っている → 保管温度帯の見直しまたは区画分けを検討", weeklyLog:[], links:[]},
+
+{id:7, location:"合志工場（干し芋）", category:"包装改善", title:"干し芋200g包材仕様見直し", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"新包材への切替予定日は未設定（在庫消化後の見込み）",
+ content:"①現行包材コスト分析 ②代替包材の選定 ③新包材への切替実施",
+ completionCriteria:"新包材への切替完了をもって完了とする（選定・試算だけでは完了としない）",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"包材の縦寸法を4cmカットし袋1枚あたり￥4.75削減、年間約26.6万円（月約22,160円）のコスト削減を試算。現在庫（約4万枚）は年間販売ペースから約8〜9ヶ月で消化見込み（2027年3月頃、実績ペースによる概算）。切替完了をもって本タスクの完了とする。",
+ risk:"現行在庫の消化に数ヶ月を要し、実際の切替は先になる見込み → 切替予定時期を明確化し標準書へ反映する", weeklyLog:[], links:[]},
+
+{id:8, location:"合志工場（干し芋）", category:"商品戦略", title:"レトルト加工基準策定", assignee:"平田・松井", dueDate:"2026-07-31", milestoneNote:"",
+ content:"①2025年販売実績分析 ②商品別収益性評価 ③レトルト化対象商品の選定基準作成",
+ completionCriteria:"レトルト殺菌なし製品の菌検査・水分値測定結果を確認し、選定基準として確定していること",
+ originalLabel:"進行中", status:"効果検証中",
+ latestUpdate:"販売実績・収益性の分析は完了（2025年年間収益￥8,438,504、EC200g粗利52%等）。レトルト殺菌の必要性を再評価し、レトルト殺菌なし製品の試作・加速検査を外部機関に提出済み。商品化に向け進行中。",
+ risk:"外部機関の検査結果待ちで完了時期が検査納期に左右される → 検査機関へ納期を確認", weeklyLog:[], links:[]},
+
+{id:9, location:"合志工場（干し芋）", category:"作業分析", title:"オーブントレイ工程工数測定", assignee:"平田", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①皮むき工程工数測定 ②スライス工程工数測定 ③充填工程を含めた1名当たり生産性算出",
+ completionCriteria:"測定結果から必要人員シミュレーターを作成し、作業人員の算出まで完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"各工程の所要時間を実測し、約24.4%の生産性向上余地を確認。作業スピードの標準化・指導の基準化を期待。結果をもとに必要人員シミュレーターを作成後、作業人員を算出。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:10, location:"合志工場（干し芋）", category:"生産管理", title:"製造計画構築（原料ベース）", assignee:"平田", dueDate:"2026-07-10", milestoneNote:"",
+ content:"①販売推移分析 ②適正在庫設定 ③生産能力を踏まえた月次計画の策定",
+ completionCriteria:"生産能力を踏まえた月次計画の策定まで完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"2025年出庫実績の推移分析に基づき適正在庫水準を設定。生産能力を踏まえた月次計画の策定を完了。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:11, location:"合志工場（干し芋）", category:"原価低減", title:"水道光熱費削減検証", assignee:"倉岡・平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①ベルト式真空機稼働実績分析 ②工程間待機時間削減の運用変更 ③エネルギー使用量最適化効果の確認",
+ completionCriteria:"待機時電力・水道を抑える運用変更を実施し、効果を確認できていること（試算だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"真空機の稼働時間と電気・水道コストを試算（能力900P/1h、電気代1h120円・水道代1h30円）。稼働をまとめることで待機時の電力・水道使用を抑える運用に変更予定。",
+ risk:"運用変更が「予定」の段階で未実施 → 運用ルール化し、現場定着を確認したうえで完了判定する", weeklyLog:[], links:[]},
+
+{id:12, location:"合志工場（干し芋）", category:"工程改善", title:"一日完結型生産体制構築", assignee:"平田", dueDate:"2026-07-12", milestoneNote:"",
+ content:"①現行工程分析 ②工程分断要因の抽出 ③製造リードタイム短縮効果の確認",
+ completionCriteria:"リードタイム短縮効果を数値で確認できていること",
+ originalLabel:"進行中", status:"効果検証中",
+ latestUpdate:"1ロットを小型化し在庫の適正化とリコール時の廃棄リスク・リコール費用低減に寄与。リードタイム短縮効果は引き続き検証中。",
+ risk:"リードタイム短縮効果の定量検証が未完了 → データがまとまり次第、効果を数値化する", weeklyLog:[], links:[]},
+
+{id:13, location:"合志工場（干し芋）", category:"設備改善", title:"フック導入検討", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①使用目的の明確化 ②必要数量の算出 ③投資対効果評価",
+ completionCriteria:"導入後の作業量・効果（加工量の増加等）を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"フックを2つ導入し作業負担を軽減。水冷槽の底板を取り除くことにより、水冷加工1回あたりの総量が180kg→240kgに増加。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:14, location:"合志工場（干し芋）", category:"設備レイアウト", title:"水切り工程レイアウト設計", assignee:"平田・松井", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①現場動線調査 ②レイアウト案の作成・施工 ③投資効果（作業時間短縮・動線短縮）の定量確認",
+ completionCriteria:"レイアウト変更に加え、作業時間短縮・動線短縮の効果を数値で確認できていること",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"レイアウト変更完了。コンテナを釜の横に配置し作業動線を短縮、水冷槽前のスペースを確保して水冷作業の作業性が向上。水冷後のコンテナは台車に直接乗せそのままオーブンへ移動し不要な作業を削減。",
+ risk:"レイアウト変更の効果（時間短縮等）が定量化されていない → 効果を数値化し報告に追記する", weeklyLog:[], links:[]},
+
+{id:15, location:"合志工場（干し芋）", category:"作業環境改善", title:"作業机高さ適正化", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①高さ調整方法の検討 ②必要寸法の算出 ③施工・効果確認",
+ completionCriteria:"施工完了し、作業負担・作業スピードへの効果が確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"パート従業員の要望を反映し高さを10cm変更。6/26に施工完了し、作業時の負担や姿勢悪化による作業スピード低下を防止。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:16, location:"玉東水工場", category:"生産管理", title:"24時間稼働対応製造計画構築", assignee:"江藤・山野・倉岡", dueDate:"2026-07-15", milestoneNote:"",
+ content:"①受注予測に基づく生産計画・人員配置の最適化 ②省人化体制の実現 ③稼働率向上の確認",
+ completionCriteria:"設備投資の可否決定を経て、24時間稼働体制が実運用として稼働していること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"画像検査機・ケースパッカー等の導入で現行4名体制から2〜3名以下運用を検討中。24時間稼働の体制案を作成し社内調整中（画像検査機100〜200万円、ケースパッカー中古機で100〜300万円）。",
+ risk:"画像検査機・ケースパッカー等の設備投資が未決定 → 経営会議へ上申し投資可否を決定する", weeklyLog:[], links:[]},
+
+{id:17, location:"玉東水工場", category:"品質・設備管理", title:"光電管設置による異常検知強化", assignee:"江藤・倉岡", dueDate:"2026-07-08", milestoneNote:"セットアップ完了予定日は未設定（要確認）",
+ content:"①ブロー機への光電管設置 ②充填機への光電管設置 ③停止ロス・品質事故削減効果の検証",
+ completionCriteria:"セットアップ完了後、停止ロス・品質事故の削減効果を確認できていること",
+ originalLabel:"進行中", status:"実施中",
+ latestUpdate:"ブロー機の未使用光電管を移設しメーカーと連携してシステム設定を進めていたが、調整に想定以上の時間を要し対応が長引いた。その後、自社で必要な部材を選定・調達し、現在は機器が揃いセットアップを進めている。想定コスト削減効果：約436,800円/月。",
+ risk:"セットアップ完了予定日が未設定 → 担当者へ確認し期日を設定する", weeklyLog:[], links:[]},
+
+{id:18, location:"玉東水工場", category:"生産性向上", title:"熱殺菌工程立上げ・立下げ時間短縮", assignee:"江藤", dueDate:"2026-08-31", milestoneNote:"",
+ content:"①液処理設備の工程分析 ②立上げ時間2.5時間短縮の施策立案（バイパス工事／熱処理機増強） ③施策実行と効果確認",
+ completionCriteria:"投資判断（バイパス工事 約100万円 or 熱処理機増強 約250万円）を経て施策を実行し、立上げ時間短縮効果を確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"水処理改修（バイパス工事）を検討。殺菌頻度を24時間→48時間に緩和する案は安全性の観点から中長期検討課題。バイパス工事（概算100万円）は大幅な時間短縮につながらない可能性が高く、熱処理機の能力増強（概算250万円）の方が立上げ時間を約半分に短縮できる見込みとの提案あり。",
+ risk:"対応策（バイパス工事 or 熱処理機増強）の投資判断が未決定 → 費用対効果を比較し経営判断を仰ぐ", weeklyLog:[], links:[]},
+
+{id:19, location:"玉東水工場", category:"倉庫のレイアウト", title:"古い順から取り出せる倉庫レイアウトへの変更", assignee:"江藤", dueDate:"2026-07-15", milestoneNote:"",
+ content:"①米倉庫と同様の横出し配置へのレイアウト変更 ②運用としての定着確認",
+ completionCriteria:"レイアウト変更を実施し、先入れ先出しの運用が定着していること",
+ originalLabel:"進行中（検討案件）", status:"未着手",
+ latestUpdate:"倉庫が満載のため着手できておらず、4週連続で状況変わらず。スペース確保出来次第実行予定。",
+ risk:"倉庫スペース不足により4週間着手できず停滞 → 優先順位を見直し、暫定的なスペースを確保する", weeklyLog:[], links:[]},
+
+{id:20, location:"近見精米工場", category:"レイアウト管理", title:"工場レイアウト図面標準化", assignee:"林田さん", dueDate:"2026-06-30", milestoneNote:"次はハンバーグ工場へ展開予定",
+ content:"①実寸ベースのレイアウト図作成 ②全拠点への横展開",
+ completionCriteria:"対象となる全拠点への横展開が完了していること（精米・合志の作成だけでは完了としない）",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"精米工場・合志工場のレイアウト図を作成し、他拠点にも展開を開始（次はハンバーグ工場を予定）。",
+ risk:"全拠点への横展開が完了していない → 横展開スケジュールを明確化する", weeklyLog:[],
+ links:[{label:"レイアウト図面（SharePoint）", url:"https://cms00moriuchi-my.sharepoint.com/:x:/g/personal/k-kuraoka_lo-cal-g_com/IQCsVr3gwVZ9RZRHft3G0xuNAV0_RZkk70KssE6AvjKteOo?wdExp=TEAMS-TREATMENT&web=1&TeamsCID=43860f29-bbc8-4cb1-b295-e0cda8c0abd1&linkOpenTime=1781855498132"}]},
+
+{id:21, location:"近見精米工場", category:"物流改善", title:"出荷ライン一体化レイアウト構築", assignee:"深水・山野", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①製函機と出荷ラインの接続検証 ②搬送・荷役動線の短縮 ③作業効率向上の確認",
+ completionCriteria:"接続・動線短縮を実施し、確保スペース・効率向上効果を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"製函機と出荷ラインの接続、台車配置の見直しにより約5パレット分のスペースを確保。緩衝材も出荷場へ移動。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:22, location:"近見精米工場", category:"5S・職場改善", title:"保管エリア最適化（DIY改善）", assignee:"吉村・深水・山野", dueDate:"2026-07-10", milestoneNote:"",
+ content:"①保管ルール整備 ②ラック配置見直し ③スペース創出",
+ completionCriteria:"資材選別・ライン引き・配送エリア整備が完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"6/27に資材選別・ライン引きを完了。配送エリア番号も塗り、無駄な動きが出ないように整備。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:23, location:"近見精米工場", category:"在庫管理", title:"玄米定温保管能力最適化", assignee:"吉村・深水", dueDate:"2026-07-17", milestoneNote:"",
+ content:"①196パレット保管時のレイアウト試算 ②収容効率向上の実施確認",
+ completionCriteria:"配置変更を実施し、保管能力向上（パレット数・トン数）を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"配置変更により保管能力を180→207パレット（115％）に拡大し、約39.7t分のスペースを確保。",
+ risk:"", weeklyLog:[], links:[]},
+
+{id:24, location:"近見精米工場", category:"設備導入", title:"ラック棚設置計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"設置予定日は未設定（要確認）",
+ content:"①必要ラック数量・仕様の選定 ②設置 ③保管能力向上（+40t）の確認",
+ completionCriteria:"設置完了後、保管能力+40tを実績値で確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"6/29経営会議にて補助金を活用して進める方針が決定。今後、設置後の保管能力+40tを見込む。",
+ risk:"設置予定日が未設定 → 補助金活用方針の決定を受け、設置予定日を確定する", weeklyLog:[], links:[]},
+
+{id:25, location:"近見精米工場", category:"設備投資・保管能力強化", title:"定温倉庫拡張計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"着工予定日は未設定（要確認）",
+ content:"①増設パターン別の収容能力試算 ②投資回収比較 ③着工・拡張完了",
+ completionCriteria:"着工・拡張が完了し、収容能力の向上を実績値で確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"いなば建設（約500万円）・九建工（約400万円）の見積りを取得。6/29経営会議で補助金活用の方針が決定。",
+ risk:"着工予定日が未設定 → 補助金活用方針の決定を受け、着工予定日を確定する", weeklyLog:[], links:[]},
+
+{id:26, location:"近見精米工場", category:"在庫適正化", title:"製品在庫ランク管理導入", assignee:"吉村・深水", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①ABC分析に基づく製品別適正在庫基準の設定 ②AIを活用した月次・週次の数値化運用の定着",
+ completionCriteria:"月次・週次の数値化運用が定着し、継続的に活用されていること（ABC分析完了だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"販売実績に基づくABC分析・製品別ランク付けが完了。AIを活用した月次・週次の適正在庫の数値化などは継続検証中。",
+ risk:"AIによる数値化運用の定着状況が未確認 → 次回報告で運用定着状況を確認する", weeklyLog:[], links:[]},
+];
+
+const STORE_KEY = "factory_dashboard_v1";
+let items = loadState();
+let filterLoc = "すべて";
+let filterStatus = new Set(STATUS_STAGES);
+let riskOnly = false;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+}
+function saveState(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(items)); }catch(e){} }
+
+// ---- SharePoint 同期（Power Automate フロー経由） ----
+const SP_GET_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/08/workflows/df76e889c59d4261b6f72465506202ff/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=YyYlkrRbpvf4eY7AUEqjhMkytECW9igg6KUFwaBwQFw";
+const SP_SAVE_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/20/workflows/824fdd23704a4e75be4f020572b0aa0c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=EXT6Slf3IWnABzEH6MiUn4FZbKIhMhCoQ8vuzFlWlQE";
+const SP_DELETE_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/26/workflows/5a037f01697e497aa209703646381442/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xhGJmbMZNd-7L8xYlgqU6SnWyLumjWETp8FgikE5GaI";
+const SP_POLL_INTERVAL_MS = 5000;
+let spEnabled = false;
+let pollTimer = null;
+
+function setSyncStatus(state){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  const map = {
+    online: "🟢 SharePoint同期中",
+    offline: "⚪ ローカル保存のみ（SharePoint未接続）",
+    error: "🔴 SharePoint接続エラー（ローカル保存のみで継続）",
+    syncing: "🔄 SharePointと同期しています…"
+  };
+  el.textContent = map[state] || "";
+}
+
+async function spGetAllItems(){
+  const res = await fetch(SP_GET_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({})
+  });
+  if(!res.ok) throw new Error("list fetch failed: "+res.status);
+  return await res.json();
+}
+
+async function spSaveItem(item){
+  const res = await fetch(SP_SAVE_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({taskId:item.id, title:item.title||"(無題)", dataJson:JSON.stringify(item)})
+  });
+  if(!res.ok) throw new Error("save failed: "+res.status);
+}
+
+async function spDeleteItem(taskId){
+  const res = await fetch(SP_DELETE_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({taskId})
+  });
+  if(!res.ok) throw new Error("delete failed: "+res.status);
+}
+
+function persistItem(item){
+  saveState();
+  if(!spEnabled) return;
+  spSaveItem(item).catch(e=>{ console.warn("SharePoint更新に失敗しました", e); setSyncStatus("error"); });
+}
+
+function spItemsToLocal(spItems){
+  return spItems.map(r=> JSON.parse(r.DataJson)).sort((a,b)=>a.id-b.id);
+}
+
+async function initSharePointSync(){
+  try{
+    setSyncStatus("syncing");
+    const remote = spItemsToLocal(await spGetAllItems());
+    if(remote.length===0){
+      for(const it of items){ await spSaveItem(it); }
+    } else {
+      items = remote;
+      saveState();
+    }
+    spEnabled = true;
+    setSyncStatus("online");
+    renderAll();
+    if(!pollTimer) pollTimer = setInterval(pollSharePoint, SP_POLL_INTERVAL_MS);
+  }catch(e){
+    spEnabled = false;
+    setSyncStatus("offline");
+    console.warn("SharePoint同期が利用できません。ローカル保存のみで動作します。", e);
+  }
+}
+
+async function pollSharePoint(){
+  if(!spEnabled) return;
+  try{
+    const spItems = await spGetAllItems();
+    const remoteMap = {};
+    spItems.forEach(r=>{
+      const obj = JSON.parse(r.DataJson);
+      remoteMap[obj.id] = obj;
+    });
+    let changed = false;
+    Object.values(remoteMap).forEach(robj=>{
+      const idx = items.findIndex(i=>i.id===robj.id);
+      const localStr = idx>=0? JSON.stringify(items[idx]) : null;
+      if(localStr !== JSON.stringify(robj)){
+        if(idx>=0) items[idx] = robj; else items.push(robj);
+        changed = true;
+        refreshCardIfPresent(robj.id);
+      }
+    });
+    const remoteIds = new Set(Object.keys(remoteMap).map(Number));
+    const before = items.length;
+    items = items.filter(i=>remoteIds.has(i.id));
+    if(items.length!==before){ changed = true; renderList(); }
+    if(changed){
+      saveState();
+      renderSummary(); renderLocSummary(); renderRiskPanel(); renderTabs();
+    }
+    setSyncStatus("online");
+  }catch(e){
+    setSyncStatus("error");
+  }
+}
+
+function refreshCardIfPresent(id){
+  const el = document.getElementById("card-"+id);
+  const item = items.find(i=>i.id===id);
+  if(el && item){
+    el.outerHTML = cardHtml(item);
+  } else {
+    renderList();
+  }
+}
+
+function fmtDate(iso){
+  if(!iso) return "未設定";
+  const d = new Date(iso+"T00:00:00");
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+function daysUntil(iso){
+  if(!iso) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(iso+"T00:00:00");
+  return Math.round((d-today)/86400000);
+}
+
+function renderSummary(){
+  const el = document.getElementById("summary");
+  el.innerHTML = STATUS_STAGES.map(s=>{
+    const n = items.filter(i=>i.status===s).length;
+    return `<div class="sum-card"><div class="num" style="color:${STATUS_COLORS[s]}">${n}</div><div class="lbl">${s}</div></div>`;
+  }).join("");
+}
+
+function renderLocSummary(){
+  const el = document.getElementById("locSummary");
+  el.innerHTML = getLocations().map(loc=>{
+    const list = items.filter(i=>i.location===loc);
+    const total = list.length;
+    const doneN = list.filter(i=>i.status==="完了").length;
+    const bars = STATUS_STAGES.map(s=>{
+      const n = list.filter(i=>i.status===s).length;
+      const pct = total? (n/total*100):0;
+      return pct? `<span style="width:${pct}%;background:${STATUS_COLORS[s]}"></span>`:"";
+    }).join("");
+    return `<div class="loc-card">
+      <div class="name">${loc}（${total}件）</div>
+      <div class="loc-bar">${bars}</div>
+      <div class="loc-meta">完了 ${doneN}/${total}</div>
+    </div>`;
+  }).join("");
+}
+
+function riskItems(){
+  return items.filter(i=>i.risk && i.risk.trim()!=="").sort((a,b)=>{
+    const da=daysUntil(a.dueDate), db=daysUntil(b.dueDate);
+    return (da===null?9999:da)-(db===null?9999:db);
+  });
+}
+
+function renderRiskPanel(){
+  const list = riskItems();
+  document.getElementById("riskCount").textContent = list.length;
+  const body = document.getElementById("riskBody");
+  if(list.length===0){ body.innerHTML = `<div class="empty">現在フラグの立っているリスクはありません</div>`; return; }
+  body.innerHTML = list.map(i=>{
+    const du = daysUntil(i.dueDate);
+    let dueCls="", dueLabel=fmtDate(i.dueDate);
+    if(du!==null){
+      if(du<0){dueCls="overdue"; dueLabel += `（${-du}日超過）`;}
+      else if(du<=7){dueCls="soon"; dueLabel += `（残り${du}日）`;}
+    }
+    return `<div class="risk-row">
+      <div class="risk-id">ID${i.id}</div>
+      <div class="risk-title">${escapeHtml(i.title)}</div>
+      <div class="risk-text">${escapeHtml(i.risk)}</div>
+      <div class="risk-due ${dueCls}">${dueLabel}</div>
+    </div>`;
+  }).join("");
+}
+
+function toggleRiskPanel(){
+  const body = document.getElementById("riskBody");
+  const caret = document.getElementById("riskCaret");
+  const collapsed = body.style.display==="none";
+  body.style.display = collapsed? "block":"none";
+  caret.textContent = collapsed? "▾":"▸";
+}
+
+function renderTabs(){
+  const locEl = document.getElementById("locTabs");
+  const locs = ["すべて",...getLocations()];
+  locEl.innerHTML = locs.map(l=>`<button class="tab-btn ${l===filterLoc?'active':''}" onclick="setLoc('${l.replace(/'/g,"&#39;")}')">${l}</button>`).join("");
+
+  const stEl = document.getElementById("statusChips");
+  stEl.innerHTML = STATUS_STAGES.map(s=>{
+    const active = filterStatus.has(s);
+    return `<span class="chip ${active?'active':''}" style="${active?`background:${STATUS_COLORS[s]}`:''}" onclick="toggleStatus('${s}')">${s}</span>`;
+  }).join("") + `<span class="chip" onclick="toggleRiskOnly()" style="${riskOnly?'background:#ef4444;color:#fff;border-color:transparent':''}">要フォローのみ</span>`;
+}
+
+function setLoc(l){ filterLoc=l; renderTabs(); renderList(); }
+function toggleStatus(s){
+  if(filterStatus.has(s)) filterStatus.delete(s); else filterStatus.add(s);
+  renderTabs(); renderList();
+}
+function toggleRiskOnly(){ riskOnly=!riskOnly; renderTabs(); renderList(); }
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function renderList(){
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  let filtered = items.filter(i=>{
+    if(filterLoc!=="すべて" && i.location!==filterLoc) return false;
+    if(!filterStatus.has(i.status)) return false;
+    if(riskOnly && (!i.risk || i.risk.trim()==="")) return false;
+    if(q){
+      const hay = `${i.id} ${i.title} ${i.assignee} ${i.content} ${i.category}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const listEl = document.getElementById("list");
+  document.getElementById("emptyMsg").style.display = filtered.length? "none":"block";
+  listEl.innerHTML = filtered.map(cardHtml).join("");
+}
+
+function cardHtml(i){
+  const du = daysUntil(i.dueDate);
+  const overdue = du!==null && du<0 && i.status!=="完了";
+  let dueNote = "";
+  if(i.status!=="完了" && du!==null){
+    if(du<0) dueNote = `<span class="overdue">（${-du}日超過）</span>`;
+    else if(du<=7) dueNote = `<span class="soon">（残り${du}日）</span>`;
+  }
+  const statusOptions = STATUS_STAGES.map(s=>`<option value="${s}" ${s===i.status?'selected':''}>${s}</option>`).join("");
+  const logCount = (i.weeklyLog||[]).length;
+  const locOptions = getLocations().map(l=>`<option value="${escapeHtml(l)}" ${l===i.location?'selected':''}>${escapeHtml(l)}</option>`).join("");
+  return `<div class="card ${overdue?'overdue-card':''}" id="card-${i.id}">
+    <div class="card-top">
+      <span class="idtag">ID ${i.id}</span>
+      <select class="loctag" style="background:${locColor(i.location)}22;color:${locColor(i.location)}" onchange="handleLocationChange(${i.id},this)">
+        ${locOptions}
+        <option value="__new__">＋ 新しい拠点</option>
+      </select>
+      <input class="cattag" value="${escapeHtml(i.category)}" placeholder="分類" onblur="updateField(${i.id},'category',this.value)">
+      <span style="flex:1"></span>
+      <select onchange="updateField(${i.id},'status',this.value)" class="badge" style="background:${STATUS_COLORS[i.status]};border:none">
+        ${statusOptions}
+      </select>
+      <span class="del-task" onclick="deleteTask(${i.id})">🗑 タスクを削除</span>
+      <input class="title-input" value="${escapeHtml(i.title)}" placeholder="タイトルを入力" onblur="updateField(${i.id},'title',this.value)">
+      <div class="meta-line">
+        <span>誰が：<input type="text" value="${escapeHtml(i.assignee)}" placeholder="担当者" onblur="updateField(${i.id},'assignee',this.value)"></span>
+        <span>いつまでに：<b><input type="date" value="${i.dueDate}" onchange="updateField(${i.id},'dueDate',this.value)"></b> ${dueNote}</span>
+        ${i.originalLabel? `<span class="origlabel">（会議資料上の表記：${escapeHtml(i.originalLabel)}）</span>`:""}
+      </div>
+    </div>
+    ${i.milestoneNote? `<div class="meta-line" style="margin-top:-6px"><span style="color:#b45309">📌 ${escapeHtml(i.milestoneNote)}</span></div>`:""}
+    <div class="grid2">
+      <div>
+        <div class="field-label">何を（内容）</div>
+        <div class="box"><textarea onblur="updateField(${i.id},'content',this.value)">${escapeHtml(i.content)}</textarea></div>
+      </div>
+      <div>
+        <div class="field-label">どの状態になれば完了とするか（完了条件）</div>
+        <div class="box criteria"><textarea onblur="updateField(${i.id},'completionCriteria',this.value)">${escapeHtml(i.completionCriteria)}</textarea></div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">最新の進捗</div>
+      <div class="box"><textarea onblur="updateField(${i.id},'latestUpdate',this.value)">${escapeHtml(i.latestUpdate)}</textarea></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">リスク・対応</div>
+      <div class="box risk"><textarea placeholder="リスクなし" onblur="updateField(${i.id},'risk',this.value)">${escapeHtml(i.risk)}</textarea></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">添付ファイル（写真・関連データ）</div>
+      <div class="box" id="attach-${i.id}">${attachHtml(i)}</div>
+    </div>
+    <div class="log-toggle" onclick="toggleLog(${i.id})">▸ 週次フォローログ（${logCount}件）</div>
+    <div class="log-section" id="log-${i.id}">
+      <div class="log-form">
+        <div><label>先週から進んだこと</label><textarea id="lp-${i.id}"></textarea></div>
+        <div><label>現在困っていること</label><textarea id="li-${i.id}"></textarea></div>
+        <div><label>次回までにやること</label><textarea id="ln-${i.id}"></textarea></div>
+        <div><label>完了予定日の変更</label><textarea id="ld-${i.id}"></textarea></div>
+      </div>
+      <button class="btn" onclick="addLog(${i.id})">この内容で記録を追加</button>
+      <div class="log-entries" style="margin-top:10px">
+        ${(i.weeklyLog||[]).slice().reverse().map((l,idx)=>logEntryHtml(i,l,(i.weeklyLog.length-1-idx))).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+
+function logEntryHtml(item,l,realIdx){
+  return `<div class="log-entry">
+    <div class="date">${l.date} <span class="del" onclick="deleteLog(${item.id},${realIdx})">削除</span></div>
+    <dl>
+      <dt>進んだこと</dt><dd>${escapeHtml(l.progress||"-")}</dd>
+      <dt>困っていること</dt><dd>${escapeHtml(l.issue||"-")}</dd>
+      <dt>次回までに</dt><dd>${escapeHtml(l.next||"-")}</dd>
+      <dt>期限の変更</dt><dd>${escapeHtml(l.dueChange||"-")}</dd>
+    </dl>
+  </div>`;
+}
+
+function toggleLog(id){
+  const el = document.getElementById("log-"+id);
+  el.classList.toggle("open");
+}
+
+function addLog(id){
+  const item = items.find(i=>i.id===id);
+  const progress = document.getElementById("lp-"+id).value.trim();
+  const issue = document.getElementById("li-"+id).value.trim();
+  const next = document.getElementById("ln-"+id).value.trim();
+  const dueChange = document.getElementById("ld-"+id).value.trim();
+  if(!progress && !issue && !next && !dueChange) return;
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  item.weeklyLog = item.weeklyLog||[];
+  item.weeklyLog.push({date:dateStr, progress, issue, next, dueChange});
+  persistItem(item);
+  renderList();
+  document.getElementById("log-"+id).classList.add("open");
+}
+
+function deleteLog(id, idx){
+  const item = items.find(i=>i.id===id);
+  item.weeklyLog.splice(idx,1);
+  persistItem(item);
+  renderList();
+  document.getElementById("log-"+id).classList.add("open");
+}
+
+function updateField(id, field, value){
+  const item = items.find(i=>i.id===id);
+  item[field] = value;
+  persistItem(item);
+  renderSummary();
+  renderLocSummary();
+  renderRiskPanel();
+  if(field==="status" || field==="dueDate" || field==="location") renderList();
+  if(field==="location") renderTabs();
+}
+
+function handleLocationChange(id, selectEl){
+  const item = items.find(i=>i.id===id);
+  let val = selectEl.value;
+  if(val === "__new__"){
+    const name = (prompt("新しい拠点名を入力してください")||"").trim();
+    if(!name){ selectEl.value = item.location; return; }
+    val = name;
+  }
+  updateField(id, "location", val);
+}
+
+function addNewTask(){
+  const maxId = items.reduce((m,i)=>Math.max(m,i.id),0);
+  const newId = maxId+1;
+  const defaultLoc = filterLoc!=="すべて"? filterLoc : (getLocations()[0]||"");
+  const newItem = {
+    id:newId, location:defaultLoc, category:"", title:"新規タスク", assignee:"", dueDate:"",
+    milestoneNote:"", content:"", completionCriteria:"", originalLabel:"", status:"未着手",
+    latestUpdate:"", risk:"", weeklyLog:[], links:[]
+  };
+  items.push(newItem);
+  filterStatus.add("未着手");
+  saveState();
+  if(spEnabled){ spSaveItem(newItem).catch(e=>{ console.warn("SharePoint登録に失敗しました", e); setSyncStatus("error"); }); }
+  renderAll();
+  setTimeout(()=>{
+    const card = document.getElementById("card-"+newId);
+    if(card) card.scrollIntoView({behavior:"smooth", block:"center"});
+    const titleInput = document.querySelector(`#card-${newId} .title-input`);
+    if(titleInput){ titleInput.focus(); titleInput.select(); }
+  }, 50);
+}
+
+function deleteTask(id){
+  if(!confirm("このタスクを削除します。よろしいですか？（元に戻せません）")) return;
+  items = items.filter(i=>i.id!==id);
+  saveState();
+  if(spEnabled){ spDeleteItem(id).catch(e=>{ console.warn("SharePoint削除に失敗しました", e); setSyncStatus("error"); }); }
+  renderAll();
+}
+
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(items,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date();
+  const stamp = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  a.href = url; a.download = `factory_dashboard_${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data)) throw new Error("invalid");
+      const oldIds = items.map(i=>i.id);
+      items = data;
+      saveState();
+      if(spEnabled){
+        (async()=>{
+          for(const id of oldIds){ await spDeleteItem(id).catch(()=>{}); }
+          for(const it of items){ await spSaveItem(it).catch(()=>{}); }
+        })();
+      }
+      renderAll();
+    }catch(err){ alert("読み込みに失敗しました。JSON形式を確認してください。"); }
+  };
+  reader.readAsText(file);
+  evt.target.value = "";
+}
+
+function resetData(){
+  const msg = spEnabled
+    ? "SharePoint上の共有データも含めて、全員分のデータが初期状態に戻ります。本当によろしいですか？"
+    : "編集内容をすべて破棄し、初期データに戻します。よろしいですか？";
+  if(!confirm(msg)) return;
+  const oldIds = items.map(i=>i.id);
+  items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  saveState();
+  if(spEnabled){
+    (async()=>{
+      for(const id of oldIds){ await spDeleteItem(id).catch(()=>{}); }
+      for(const it of items){ await spSaveItem(it).catch(()=>{}); }
+    })();
+  }
+  renderAll();
+}
+
+function renderAll(){
+  renderSummary();
+  renderLocSummary();
+  renderRiskPanel();
+  renderTabs();
+  renderList();
+}
+
+// ---- 添付ファイル（アップロード：IndexedDB） ----
+const ATTACH_DB_NAME = "factory_dashboard_files";
+const ATTACH_STORE = "attachments";
+let fileAttachments = [];
+let attachDbAvailable = true;
+let dbPromise = null;
+const objectUrlCache = {};
+
+function openAttachDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    if(!window.indexedDB){ reject(new Error("no indexeddb")); return; }
+    const req = indexedDB.open(ATTACH_DB_NAME, 1);
+    req.onupgradeneeded = e=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(ATTACH_STORE)){
+        const store = db.createObjectStore(ATTACH_STORE, {keyPath:"id", autoIncrement:true});
+        store.createIndex("itemId","itemId",{unique:false});
+      }
+    };
+    req.onsuccess = e=> resolve(e.target.result);
+    req.onerror = e=> reject(e.target.error);
+  });
+  return dbPromise;
+}
+function dbAdd(record){
+  return openAttachDB().then(db=> new Promise((resolve,reject)=>{
+    const tx = db.transaction(ATTACH_STORE,"readwrite");
+    const req = tx.objectStore(ATTACH_STORE).add(record);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  }));
+}
+function dbDelete(id){
+  return openAttachDB().then(db=> new Promise((resolve,reject)=>{
+    const tx = db.transaction(ATTACH_STORE,"readwrite");
+    const req = tx.objectStore(ATTACH_STORE).delete(id);
+    req.onsuccess = ()=> resolve();
+    req.onerror = ()=> reject(req.error);
+  }));
+}
+function dbGetAll(){
+  return openAttachDB().then(db=> new Promise((resolve,reject)=>{
+    const tx = db.transaction(ATTACH_STORE,"readonly");
+    const req = tx.objectStore(ATTACH_STORE).getAll();
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  }));
+}
+
+function fileAttachmentsFor(itemId){ return fileAttachments.filter(a=>a.itemId===itemId); }
+
+function humanSize(bytes){
+  if(bytes<1024) return bytes+"B";
+  if(bytes<1024*1024) return (bytes/1024).toFixed(1)+"KB";
+  return (bytes/1024/1024).toFixed(1)+"MB";
+}
+
+function fileIcon(type,name){
+  if(type.startsWith("image/")) return "🖼️";
+  if(type.includes("pdf")) return "📕";
+  if(/\.(xlsx|xls|csv)$/i.test(name)) return "📊";
+  if(/\.(docx|doc)$/i.test(name)) return "📄";
+  return "📎";
+}
+
+async function handleFileSelect(itemId, evt){
+  const files = Array.from(evt.target.files||[]);
+  evt.target.value = "";
+  for(const file of files){
+    if(file.size > 30*1024*1024){
+      alert(`${file.name} は30MBを超えるため追加できません`);
+      continue;
+    }
+    let thumbDataUrl = null;
+    if(file.type.startsWith("image/")){
+      thumbDataUrl = await makeThumbnail(file).catch(()=>null);
+    }
+    const record = {itemId, name:file.name, type:file.type||"application/octet-stream", size:file.size, blob:file, thumbDataUrl, addedDate:new Date().toLocaleDateString('ja-JP')};
+    try{
+      const id = await dbAdd(record);
+      record.id = id;
+      fileAttachments.push(record);
+    }catch(e){ alert("添付ファイルの保存に失敗しました: "+file.name); }
+  }
+  refreshAttachSection(itemId);
+}
+
+function makeThumbnail(file){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      const maxDim = 240;
+      const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
+      const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+      const canvas = document.createElement("canvas");
+      canvas.width=w; canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg",0.8));
+    };
+    img.onerror = e=>{ URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+async function removeFile(itemId, id){
+  if(!confirm("この添付ファイルを削除しますか？")) return;
+  try{ await dbDelete(id); }catch(e){}
+  fileAttachments = fileAttachments.filter(a=>a.id!==id);
+  if(objectUrlCache[id]){ URL.revokeObjectURL(objectUrlCache[id]); delete objectUrlCache[id]; }
+  refreshAttachSection(itemId);
+}
+
+function getObjectUrl(id){
+  if(objectUrlCache[id]) return objectUrlCache[id];
+  const rec = fileAttachments.find(a=>a.id===id);
+  if(!rec) return null;
+  const url = URL.createObjectURL(rec.blob);
+  objectUrlCache[id] = url;
+  return url;
+}
+
+function openLightbox(id){
+  const url = getObjectUrl(id);
+  if(!url) return;
+  document.getElementById("lightboxImg").src = url;
+  document.getElementById("lightbox").classList.add("open");
+}
+function closeLightbox(){ document.getElementById("lightbox").classList.remove("open"); }
+
+function downloadAttachment(id){
+  const rec = fileAttachments.find(a=>a.id===id);
+  if(!rec) return;
+  const url = getObjectUrl(id);
+  const a = document.createElement("a");
+  a.href = url; a.download = rec.name;
+  a.click();
+}
+
+// ---- 添付ファイル（クラウドリンク） ----
+function linkIcon(url){
+  try{
+    const host = new URL(url).hostname;
+    if(host.includes("drive.google.com") || host.includes("docs.google.com")) return "🟢";
+    if(host.includes("sharepoint.com") || host.includes("onedrive")) return "🔵";
+    if(host.includes("dropbox.com")) return "📦";
+    if(host.includes("box.com")) return "🟦";
+  }catch(e){}
+  return "🔗";
+}
+
+function addLink(itemId){
+  const labelEl = document.getElementById("al-"+itemId);
+  const urlEl = document.getElementById("au-"+itemId);
+  const label = labelEl.value.trim();
+  let url = urlEl.value.trim();
+  if(!url) return;
+  if(!/^https?:\/\//i.test(url)) url = "https://"+url;
+  try{ new URL(url); }catch(e){ alert("URLの形式が正しくありません"); return; }
+  const item = items.find(i=>i.id===itemId);
+  item.links = item.links||[];
+  item.links.push({label, url});
+  persistItem(item);
+  labelEl.value=""; urlEl.value="";
+  refreshAttachSection(itemId);
+}
+
+function removeLink(itemId, idx){
+  if(!confirm("この添付リンクを削除しますか？")) return;
+  const item = items.find(i=>i.id===itemId);
+  item.links.splice(idx,1);
+  persistItem(item);
+  refreshAttachSection(itemId);
+}
+
+// ---- 添付欄の描画（ファイル＋リンク） ----
+function attachHtml(item){
+  const files = fileAttachmentsFor(item.id);
+  let filesHtml;
+  if(!attachDbAvailable){
+    filesHtml = `<div class="attach-empty">このブラウザではファイル添付機能が利用できません</div>`;
+  }else{
+    filesHtml = (files.length? files.map(a=>{
+      if(a.type.startsWith("image/") && a.thumbDataUrl){
+        return `<div class="attach-item">
+          <img class="attach-thumb" src="${a.thumbDataUrl}" onclick="openLightbox(${a.id})">
+          <div class="attach-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</div>
+          <div class="attach-size">${humanSize(a.size)}</div>
+          <span class="attach-del" onclick="removeFile(${item.id},${a.id})">削除</span>
+        </div>`;
+      }
+      return `<div class="attach-item">
+        <div class="attach-file-icon" onclick="downloadAttachment(${a.id})">${fileIcon(a.type,a.name)}</div>
+        <div class="attach-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</div>
+        <div class="attach-size">${humanSize(a.size)}</div>
+        <span class="attach-del" onclick="removeFile(${item.id},${a.id})">削除</span>
+      </div>`;
+    }).join("") : `<div class="attach-empty">アップロード済みのファイルはまだありません</div>`)
+    + `<div style="clear:both"></div>`;
+  }
+  const fileControls = attachDbAvailable? `<button class="btn" onclick="document.getElementById('file-${item.id}').click()">📎 ファイルを追加</button>
+    <input type="file" id="file-${item.id}" multiple style="display:none" onchange="handleFileSelect(${item.id}, event)">` : "";
+
+  const links = item.links||[];
+  const linksHtml = links.length? links.map((l,idx)=>`
+    <div class="attach-row">
+      <span class="attach-icon">${linkIcon(l.url)}</span>
+      <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label||l.url)}</a>
+      <span class="attach-url">${escapeHtml(l.url)}</span>
+      <span class="attach-del" onclick="removeLink(${item.id},${idx})">削除</span>
+    </div>`).join("") : `<div class="attach-empty">添付リンクはまだありません</div>`;
+
+  return `
+    <div class="attach-subtitle">アップロードファイル（写真・データ）</div>
+    <div class="attach-files">${filesHtml}</div>
+    ${fileControls}
+    <div class="attach-subtitle">クラウドリンク（共同編集用）</div>
+    <div class="attach-list">${linksHtml}</div>
+    <div class="attach-form">
+      <input class="label" id="al-${item.id}" placeholder="表示名（例：現場写真）">
+      <input class="url" id="au-${item.id}" placeholder="https://drive.google.com/... など">
+      <button class="btn" onclick="addLink(${item.id})">＋ リンクを追加</button>
+    </div>`;
+}
+
+function refreshAttachSection(itemId){
+  const el = document.getElementById("attach-"+itemId);
+  const item = items.find(i=>i.id===itemId);
+  if(el && item) el.innerHTML = attachHtml(item);
+}
+
+document.getElementById("searchBox").addEventListener("input", renderList);
+
+(async function init(){
+  try{
+    fileAttachments = await dbGetAll();
+  }catch(e){
+    attachDbAvailable = false;
+  }
+  renderAll();
+  initSharePointSync();
+})();
+</script>
+</body>
+</html>

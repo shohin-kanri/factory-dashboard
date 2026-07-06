@@ -79,7 +79,7 @@ input.cattag{border:none;font-family:inherit;width:110px}
 .box.risk{background:#fff6ec;border-color:#f3ddb8}
 textarea{width:100%;border:none;background:transparent;resize:vertical;font-family:inherit;font-size:13px;min-height:44px;padding:0}
 textarea:focus{outline:1px solid var(--navy);border-radius:4px}
-.origlabel{font-size:11px;color:var(--muted)}
+.milestone-input{flex:1;min-width:200px}
 
 .log-toggle{margin-top:10px;font-size:12.5px;color:var(--navy);cursor:pointer;font-weight:600}
 .log-section{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
@@ -642,10 +642,13 @@ function cardHtml(i){
       <div class="meta-line">
         <span>誰が：<input type="text" value="${escapeHtml(i.assignee)}" placeholder="担当者" onblur="updateField(${i.id},'assignee',this.value)"></span>
         <span>いつまでに：<b><input type="date" value="${i.dueDate}" onchange="updateField(${i.id},'dueDate',this.value)"></b> ${dueNote}</span>
-        ${i.originalLabel? `<span class="origlabel">（会議資料上の表記：${escapeHtml(i.originalLabel)}）</span>`:""}
       </div>
     </div>
-    ${i.milestoneNote? `<div class="meta-line" style="margin-top:-6px"><span style="color:#b45309">📌 ${escapeHtml(i.milestoneNote)}</span></div>`:""}
+    <div class="meta-line" style="margin-top:-6px">
+      <span style="color:#b45309">📌</span>
+      <input type="text" class="milestone-input" value="${escapeHtml(i.milestoneNote||"")}" placeholder="備考・マイルストーンを入力（任意）" onblur="updateField(${i.id},'milestoneNote',this.value)">
+      <span class="attach-del" onclick="clearMilestone(${i.id})">削除</span>
+    </div>
     <div class="grid2">
       <div>
         <div class="field-label">何を（内容）</div>
@@ -745,6 +748,14 @@ function handleLocationChange(id, selectEl){
     val = name;
   }
   updateField(id, "location", val);
+}
+
+function clearMilestone(id){
+  const item = items.find(i=>i.id===id);
+  if(!item.milestoneNote) return;
+  updateField(id, "milestoneNote", "");
+  const input = document.querySelector(`#card-${id} .milestone-input`);
+  if(input) input.value = "";
 }
 
 function addNewTask(){

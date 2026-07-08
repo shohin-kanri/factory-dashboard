@@ -86,6 +86,7 @@ textarea:focus{outline:1px solid var(--navy);border-radius:4px}
 .log-section.open{display:block}
 .log-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .log-form textarea{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-height:36px}
+.log-form input{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;width:100%;box-sizing:border-box}
 .log-form label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
 .log-entries{display:flex;flex-direction:column;gap:8px}
 .log-entry{background:#fbfbfc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px}
@@ -671,9 +672,10 @@ function cardHtml(i){
       <div class="field-label">添付ファイル（写真・関連データ）</div>
       <div class="box" id="attach-${i.id}">${attachHtml(i)}</div>
     </div>
-    <div class="log-toggle" onclick="toggleLog(${i.id})">▸ 週次フォローログ（${logCount}件）</div>
+    <div class="log-toggle" onclick="toggleLog(${i.id})">▸ 定期フォローログ（${logCount}件）</div>
     <div class="log-section" id="log-${i.id}">
       <div class="log-form">
+        <div style="grid-column:1/-1"><label>記入者</label><input type="text" id="lr-${i.id}" placeholder="氏名"></div>
         <div><label>先週から進んだこと</label><textarea id="lp-${i.id}"></textarea></div>
         <div><label>現在困っていること</label><textarea id="li-${i.id}"></textarea></div>
         <div><label>次回までにやること</label><textarea id="ln-${i.id}"></textarea></div>
@@ -691,6 +693,7 @@ function logEntryHtml(item,l,realIdx){
   return `<div class="log-entry">
     <div class="date">${l.date} <span class="del" onclick="deleteLog(${item.id},${realIdx})">削除</span></div>
     <dl>
+      <dt>記入者</dt><dd>${escapeHtml(l.reporter||"-")}</dd>
       <dt>進んだこと</dt><dd>${escapeHtml(l.progress||"-")}</dd>
       <dt>困っていること</dt><dd>${escapeHtml(l.issue||"-")}</dd>
       <dt>次回までに</dt><dd>${escapeHtml(l.next||"-")}</dd>
@@ -706,15 +709,16 @@ function toggleLog(id){
 
 function addLog(id){
   const item = items.find(i=>i.id===id);
+  const reporter = document.getElementById("lr-"+id).value.trim();
   const progress = document.getElementById("lp-"+id).value.trim();
   const issue = document.getElementById("li-"+id).value.trim();
   const next = document.getElementById("ln-"+id).value.trim();
   const dueChange = document.getElementById("ld-"+id).value.trim();
-  if(!progress && !issue && !next && !dueChange) return;
+  if(!reporter && !progress && !issue && !next && !dueChange) return;
   const today = new Date();
   const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
   item.weeklyLog = item.weeklyLog||[];
-  item.weeklyLog.push({date:dateStr, progress, issue, next, dueChange});
+  item.weeklyLog.push({date:dateStr, reporter, progress, issue, next, dueChange});
   persistItem(item);
   renderList();
   document.getElementById("log-"+id).classList.add("open");

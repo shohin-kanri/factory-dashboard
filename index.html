@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>工場改善プロジェクト 進捗管理ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"></script>
 <style>
 :root{
   --bg:#f4f5f7; --card:#ffffff; --border:#e3e5ea; --text:#1f2430; --muted:#6b7280;
@@ -80,6 +81,7 @@ input.cattag{border:none;font-family:inherit;width:110px}
 textarea{width:100%;border:none;background:transparent;resize:vertical;font-family:inherit;font-size:13px;min-height:44px;padding:0}
 textarea:focus{outline:1px solid var(--navy);border-radius:4px}
 .milestone-input{flex:1;min-width:200px}
+.cost-input{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12.5px;width:140px;box-sizing:border-box}
 
 .log-toggle{margin-top:10px;font-size:12.5px;color:var(--navy);cursor:pointer;font-weight:600}
 .log-section{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
@@ -151,6 +153,7 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px}
     <span class="spacer"></span>
     <span id="syncStatus" style="font-size:12px;color:var(--muted)"></span>
     <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="addNewTask()">＋ 新規タスクを追加</button>
+    <button class="btn" id="pptxBtn" onclick="generatePptx()">📊 PowerPoint資料作成</button>
     <button class="btn" onclick="exportJSON()">JSONエクスポート</button>
     <button class="btn" onclick="document.getElementById('importFile').click()">JSONインポート</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
@@ -171,6 +174,11 @@ const STATUS_COLORS = {
   "未着手":"var(--c-michaku)", "検討中":"var(--c-kento)", "実施中":"var(--c-jisshi)",
   "効果検証中":"var(--c-kouka)", "標準化":"var(--c-hyojun)", "完了":"var(--c-kanryo)"
 };
+const STATUS_HEX = {
+  "未着手":{bg:"E9EAEE", border:"9CA3AF"}, "検討中":{bg:"EFE9FB", border:"8B5CF6"},
+  "実施中":{bg:"E3EEFD", border:"3B82F6"}, "効果検証中":{bg:"FDF1DC", border:"F59E0B"},
+  "標準化":{bg:"DEF7F2", border:"14B8A6"}, "完了":{bg:"E5F2E6", border:"2E7D32"}
+};
 const LOC_PALETTE = ["#3b82f6","#f59e0b","#14b8a6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#ec4899"];
 function getLocations(){
   const seen = [];
@@ -188,133 +196,133 @@ const DEFAULT_ITEMS = [
  completionCriteria:"③まで実施し、生産性向上効果（％）を数値で確認できていること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"ドウェルタイム設定を見直し、真空・シール工程のサイクルタイムを0.3秒削減。生産性+4%を確認し検証完了。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:2, location:"合志工場（食肉）", category:"人員最適", title:"鶏肉加工ライン省人化・レイアウト改善", assignee:"松井", dueDate:"2026-06-10", milestoneNote:"",
  content:"①現行作業動線分析 ②2名削減を前提とした設備配置の見直し ③生産能力維持条件の検証",
  completionCriteria:"③生産能力維持条件の検証まで完了していること（レイアウト変更だけでは完了としない）",
  originalLabel:"完了", status:"効果検証中",
  latestUpdate:"作業動線の見直しと2名削減後の配置図は完成（鶏肉に加え豚肉製造にも展開可）。ただし③は豚肉の加工がまだのため生産能力維持条件を確認できておらず未達成。想定コスト削減効果：約58,800円/年（約4,900円/月）。",
- risk:"③生産能力維持条件の検証が豚肉加工未実施のため確認できていない → 豚肉加工開始後に検証を実施し、完了判定はその後に行う", weeklyLog:[], links:[]},
+ risk:"③生産能力維持条件の検証が豚肉加工未実施のため確認できていない → 豚肉加工開始後に検証を実施し、完了判定はその後に行う", weeklyLog:[], links:[], costSavings:{annual:4586400,monthly:382200,note:"パート2名分の人件費削減試算"}},
 
 {id:3, location:"合志工場（食肉）", category:"在庫管理", title:"製品・原料在庫適正化", assignee:"松井・野村・倉岡", dueDate:"2026-09-30", milestoneNote:"ふるさと納税の駆け込み需要期までに完了予定",
  content:"①自社倉庫の棚卸し ②外注倉庫在庫の可視化 ③滞留在庫・過剰在庫の削減計画策定（数値目標化）",
  completionCriteria:"削減目標を「◯％削減」の形で数値化し、その達成をもって完了とする",
  originalLabel:"進行中", status:"実施中",
  latestUpdate:"炭火鶏・うなぎ・馬刺し・ペットフード等の滞留在庫についてEC／ふるさと納税での販売強化を継続中。豚・鶏の販売計画を数値化して管理中。削減目標は次回報告までに数値化して設定する。",
- risk:"在庫削減の数値目標が未設定で、進捗を定量的に追えていない → 次回報告までに削減目標％を確定させる", weeklyLog:[], links:[]},
+ risk:"在庫削減の数値目標が未設定で、進捗を定量的に追えていない → 次回報告までに削減目標％を確定させる", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:4, location:"合志工場（食肉）", category:"品質管理", title:"商品別解凍時間標準化", assignee:"松井・野村・倉岡", dueDate:"2026-06-15", milestoneNote:"",
  content:"①商品ごとの解凍条件調査 ②標準解凍時間の設定 ③製造計画・標準書への反映と教育",
  completionCriteria:"標準解凍時間を標準書に反映し、現場教育まで完了していること",
  originalLabel:"完了", status:"標準化",
  latestUpdate:"冷凍商品の品温維持を前提に、商品別に常温環境下での許容作業時間を検証。出荷作業は原則45分以内を目安とし、商品別の品温上昇データ・季節要因・出荷場温度を踏まえ必要に応じて保冷対策・作業手順を見直す運用とした。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:5, location:"合志工場（食肉）", category:"物流改善", title:"出荷場レイアウト変更", assignee:"野村・松井", dueDate:"2026-07-15", milestoneNote:"稟議承認予定日・着工予定日は未設定（要確認）",
  content:"①冷蔵・冷凍庫前への移設検討 ②運搬距離短縮効果測定 ③荷役作業効率向上",
  completionCriteria:"施工完了後、運搬距離短縮効果を測定できていること",
  originalLabel:"進行中", status:"検討中",
  latestUpdate:"自社施工を検討していたが、建物オーナー確認の結果、業者施工で進行。ホシザキより概算10万円の見積りを口頭で受領し、現在正式見積書を依頼中。取得後、稟議承認を経て着工予定。",
- risk:"業者の正式見積り・稟議承認が未完了で着工が遅れる可能性 → 見積り取得後速やかに稟議を通し、着工予定日を確定する", weeklyLog:[], links:[]},
+ risk:"業者の正式見積り・稟議承認が未完了で着工が遅れる可能性 → 見積り取得後速やかに稟議を通し、着工予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:6, location:"合志工場（食肉）", category:"倉庫運用", title:"冷蔵庫スペース有効活用", assignee:"山野", dueDate:"2026-06-30", milestoneNote:"",
  content:"①冷蔵庫内空きスペース調査 ②米保管運用（10℃前後）の検証 ③保管コスト削減効果試算",
  completionCriteria:"庫内温度管理課題（結露・カビリスク）を解消し、恒常運用として定着していること",
  originalLabel:"進行中（検討案件）", status:"検討中",
  latestUpdate:"原料保管の配置を見直し5パレット分を確保。ただし現在の庫内設定は0℃のため、玄米を常温環境へ出す際に結露が生じやすく、水分を吸ってカビ・変色の原因となるリスクがある。この温度管理課題の解消をもって完了とする。想定コスト影響：年間約373万円（月311,116円）。",
- risk:"庫内温度差により結露・カビ発生リスクが残っている → 保管温度帯の見直しまたは区画分けを検討", weeklyLog:[], links:[]},
+ risk:"庫内温度差により結露・カビ発生リスクが残っている → 保管温度帯の見直しまたは区画分けを検討", weeklyLog:[], links:[], costSavings:{annual:3734000,monthly:311116,note:"保管料・入庫料の試算に基づくコスト影響"}},
 
 {id:7, location:"合志工場（干し芋）", category:"包装改善", title:"干し芋200g包材仕様見直し", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"新包材への切替予定日は未設定（在庫消化後の見込み）",
  content:"①現行包材コスト分析 ②代替包材の選定 ③新包材への切替実施",
  completionCriteria:"新包材への切替完了をもって完了とする（選定・試算だけでは完了としない）",
  originalLabel:"完了", status:"標準化",
  latestUpdate:"包材の縦寸法を4cmカットし袋1枚あたり￥4.75削減、年間約26.6万円（月約22,160円）のコスト削減を試算。現在庫（約4万枚）は年間販売ペースから約8〜9ヶ月で消化見込み（2027年3月頃、実績ペースによる概算）。切替完了をもって本タスクの完了とする。",
- risk:"現行在庫の消化に数ヶ月を要し、実際の切替は先になる見込み → 切替予定時期を明確化し標準書へ反映する", weeklyLog:[], links:[]},
+ risk:"現行在庫の消化に数ヶ月を要し、実際の切替は先になる見込み → 切替予定時期を明確化し標準書へ反映する", weeklyLog:[], links:[], costSavings:{annual:266000,monthly:22160,note:"包材切替（縦4cmカット）による削減試算"}},
 
 {id:8, location:"合志工場（干し芋）", category:"商品戦略", title:"レトルト加工基準策定", assignee:"平田・松井", dueDate:"2026-07-31", milestoneNote:"",
  content:"①2025年販売実績分析 ②商品別収益性評価 ③レトルト化対象商品の選定基準作成",
  completionCriteria:"レトルト殺菌なし製品の菌検査・水分値測定結果を確認し、選定基準として確定していること",
  originalLabel:"進行中", status:"効果検証中",
  latestUpdate:"販売実績・収益性の分析は完了（2025年年間収益￥8,438,504、EC200g粗利52%等）。レトルト殺菌の必要性を再評価し、レトルト殺菌なし製品の試作・加速検査を外部機関に提出済み。商品化に向け進行中。",
- risk:"外部機関の検査結果待ちで完了時期が検査納期に左右される → 検査機関へ納期を確認", weeklyLog:[], links:[]},
+ risk:"外部機関の検査結果待ちで完了時期が検査納期に左右される → 検査機関へ納期を確認", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:9, location:"合志工場（干し芋）", category:"作業分析", title:"オーブントレイ工程工数測定", assignee:"平田", dueDate:"2026-06-12", milestoneNote:"",
  content:"①皮むき工程工数測定 ②スライス工程工数測定 ③充填工程を含めた1名当たり生産性算出",
  completionCriteria:"測定結果から必要人員シミュレーターを作成し、作業人員の算出まで完了していること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"各工程の所要時間を実測し、約24.4%の生産性向上余地を確認。作業スピードの標準化・指導の基準化を期待。結果をもとに必要人員シミュレーターを作成後、作業人員を算出。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:10, location:"合志工場（干し芋）", category:"生産管理", title:"製造計画構築（原料ベース）", assignee:"平田", dueDate:"2026-07-10", milestoneNote:"",
  content:"①販売推移分析 ②適正在庫設定 ③生産能力を踏まえた月次計画の策定",
  completionCriteria:"生産能力を踏まえた月次計画の策定まで完了していること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"2025年出庫実績の推移分析に基づき適正在庫水準を設定。生産能力を踏まえた月次計画の策定を完了。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:11, location:"合志工場（干し芋）", category:"原価低減", title:"水道光熱費削減検証", assignee:"倉岡・平田", dueDate:"2026-06-30", milestoneNote:"",
  content:"①ベルト式真空機稼働実績分析 ②工程間待機時間削減の運用変更 ③エネルギー使用量最適化効果の確認",
  completionCriteria:"待機時電力・水道を抑える運用変更を実施し、効果を確認できていること（試算だけでは完了としない）",
  originalLabel:"完了", status:"効果検証中",
  latestUpdate:"真空機の稼働時間と電気・水道コストを試算（能力900P/1h、電気代1h120円・水道代1h30円）。稼働をまとめることで待機時の電力・水道使用を抑える運用に変更予定。",
- risk:"運用変更が「予定」の段階で未実施 → 運用ルール化し、現場定着を確認したうえで完了判定する", weeklyLog:[], links:[]},
+ risk:"運用変更が「予定」の段階で未実施 → 運用ルール化し、現場定着を確認したうえで完了判定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:12, location:"合志工場（干し芋）", category:"工程改善", title:"一日完結型生産体制構築", assignee:"平田", dueDate:"2026-07-12", milestoneNote:"",
  content:"①現行工程分析 ②工程分断要因の抽出 ③製造リードタイム短縮効果の確認",
  completionCriteria:"リードタイム短縮効果を数値で確認できていること",
  originalLabel:"進行中", status:"効果検証中",
  latestUpdate:"1ロットを小型化し在庫の適正化とリコール時の廃棄リスク・リコール費用低減に寄与。リードタイム短縮効果は引き続き検証中。",
- risk:"リードタイム短縮効果の定量検証が未完了 → データがまとまり次第、効果を数値化する", weeklyLog:[], links:[]},
+ risk:"リードタイム短縮効果の定量検証が未完了 → データがまとまり次第、効果を数値化する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:13, location:"合志工場（干し芋）", category:"設備改善", title:"フック導入検討", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
  content:"①使用目的の明確化 ②必要数量の算出 ③投資対効果評価",
  completionCriteria:"導入後の作業量・効果（加工量の増加等）を確認できていること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"フックを2つ導入し作業負担を軽減。水冷槽の底板を取り除くことにより、水冷加工1回あたりの総量が180kg→240kgに増加。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:14, location:"合志工場（干し芋）", category:"設備レイアウト", title:"水切り工程レイアウト設計", assignee:"平田・松井", dueDate:"2026-06-30", milestoneNote:"",
  content:"①現場動線調査 ②レイアウト案の作成・施工 ③投資効果（作業時間短縮・動線短縮）の定量確認",
  completionCriteria:"レイアウト変更に加え、作業時間短縮・動線短縮の効果を数値で確認できていること",
  originalLabel:"完了", status:"標準化",
  latestUpdate:"レイアウト変更完了。コンテナを釜の横に配置し作業動線を短縮、水冷槽前のスペースを確保して水冷作業の作業性が向上。水冷後のコンテナは台車に直接乗せそのままオーブンへ移動し不要な作業を削減。",
- risk:"レイアウト変更の効果（時間短縮等）が定量化されていない → 効果を数値化し報告に追記する", weeklyLog:[], links:[]},
+ risk:"レイアウト変更の効果（時間短縮等）が定量化されていない → 効果を数値化し報告に追記する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:15, location:"合志工場（干し芋）", category:"作業環境改善", title:"作業机高さ適正化", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
  content:"①高さ調整方法の検討 ②必要寸法の算出 ③施工・効果確認",
  completionCriteria:"施工完了し、作業負担・作業スピードへの効果が確認できていること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"パート従業員の要望を反映し高さを10cm変更。6/26に施工完了し、作業時の負担や姿勢悪化による作業スピード低下を防止。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:16, location:"玉東水工場", category:"生産管理", title:"24時間稼働対応製造計画構築", assignee:"江藤・山野・倉岡", dueDate:"2026-07-15", milestoneNote:"",
  content:"①受注予測に基づく生産計画・人員配置の最適化 ②省人化体制の実現 ③稼働率向上の確認",
  completionCriteria:"設備投資の可否決定を経て、24時間稼働体制が実運用として稼働していること",
  originalLabel:"進行中", status:"検討中",
  latestUpdate:"画像検査機・ケースパッカー等の導入で現行4名体制から2〜3名以下運用を検討中。24時間稼働の体制案を作成し社内調整中（画像検査機100〜200万円、ケースパッカー中古機で100〜300万円）。",
- risk:"画像検査機・ケースパッカー等の設備投資が未決定 → 経営会議へ上申し投資可否を決定する", weeklyLog:[], links:[]},
+ risk:"画像検査機・ケースパッカー等の設備投資が未決定 → 経営会議へ上申し投資可否を決定する", weeklyLog:[], links:[], costSavings:{annual:22075200,monthly:1839600,note:"24時間稼働全時間帯でパート2名削減した場合の人件費試算"}},
 
 {id:17, location:"玉東水工場", category:"品質・設備管理", title:"光電管設置による異常検知強化", assignee:"江藤・倉岡", dueDate:"2026-07-08", milestoneNote:"セットアップ完了予定日は未設定（要確認）",
  content:"①ブロー機への光電管設置 ②充填機への光電管設置 ③停止ロス・品質事故削減効果の検証",
  completionCriteria:"セットアップ完了後、停止ロス・品質事故の削減効果を確認できていること",
  originalLabel:"進行中", status:"実施中",
  latestUpdate:"ブロー機の未使用光電管を移設しメーカーと連携してシステム設定を進めていたが、調整に想定以上の時間を要し対応が長引いた。その後、自社で必要な部材を選定・調達し、現在は機器が揃いセットアップを進めている。想定コスト削減効果：約436,800円/月。",
- risk:"セットアップ完了予定日が未設定 → 担当者へ確認し期日を設定する", weeklyLog:[], links:[]},
+ risk:"セットアップ完了予定日が未設定 → 担当者へ確認し期日を設定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:18, location:"玉東水工場", category:"生産性向上", title:"熱殺菌工程立上げ・立下げ時間短縮", assignee:"江藤", dueDate:"2026-08-31", milestoneNote:"",
  content:"①液処理設備の工程分析 ②立上げ時間2.5時間短縮の施策立案（バイパス工事／熱処理機増強） ③施策実行と効果確認",
  completionCriteria:"投資判断（バイパス工事 約100万円 or 熱処理機増強 約250万円）を経て施策を実行し、立上げ時間短縮効果を確認できていること",
  originalLabel:"進行中", status:"検討中",
  latestUpdate:"水処理改修（バイパス工事）を検討。殺菌頻度を24時間→48時間に緩和する案は安全性の観点から中長期検討課題。バイパス工事（概算100万円）は大幅な時間短縮につながらない可能性が高く、熱処理機の能力増強（概算250万円）の方が立上げ時間を約半分に短縮できる見込みとの提案あり。",
- risk:"対応策（バイパス工事 or 熱処理機増強）の投資判断が未決定 → 費用対効果を比較し経営判断を仰ぐ", weeklyLog:[], links:[]},
+ risk:"対応策（バイパス工事 or 熱処理機増強）の投資判断が未決定 → 費用対効果を比較し経営判断を仰ぐ", weeklyLog:[], links:[], costSavings:{annual:31061500,monthly:2588458,note:"熱処理機能力増強による稼働増加分の売上増加試算（コスト削減ではなく増収効果）"}},
 
 {id:19, location:"玉東水工場", category:"倉庫のレイアウト", title:"古い順から取り出せる倉庫レイアウトへの変更", assignee:"江藤", dueDate:"2026-07-15", milestoneNote:"",
  content:"①米倉庫と同様の横出し配置へのレイアウト変更 ②運用としての定着確認",
  completionCriteria:"レイアウト変更を実施し、先入れ先出しの運用が定着していること",
  originalLabel:"進行中（検討案件）", status:"未着手",
  latestUpdate:"倉庫が満載のため着手できておらず、4週連続で状況変わらず。スペース確保出来次第実行予定。",
- risk:"倉庫スペース不足により4週間着手できず停滞 → 優先順位を見直し、暫定的なスペースを確保する", weeklyLog:[], links:[]},
+ risk:"倉庫スペース不足により4週間着手できず停滞 → 優先順位を見直し、暫定的なスペースを確保する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:20, location:"近見精米工場", category:"レイアウト管理", title:"工場レイアウト図面標準化", assignee:"林田さん", dueDate:"2026-06-30", milestoneNote:"次はハンバーグ工場へ展開予定",
  content:"①実寸ベースのレイアウト図作成 ②全拠点への横展開",
@@ -322,49 +330,50 @@ const DEFAULT_ITEMS = [
  originalLabel:"完了", status:"標準化",
  latestUpdate:"精米工場・合志工場のレイアウト図を作成し、他拠点にも展開を開始（次はハンバーグ工場を予定）。",
  risk:"全拠点への横展開が完了していない → 横展開スケジュールを明確化する", weeklyLog:[],
- links:[{label:"レイアウト図面（SharePoint）", url:"https://cms00moriuchi-my.sharepoint.com/:x:/g/personal/k-kuraoka_lo-cal-g_com/IQCsVr3gwVZ9RZRHft3G0xuNAV0_RZkk70KssE6AvjKteOo?wdExp=TEAMS-TREATMENT&web=1&TeamsCID=43860f29-bbc8-4cb1-b295-e0cda8c0abd1&linkOpenTime=1781855498132"}]},
+ links:[{label:"レイアウト図面（SharePoint）", url:"https://cms00moriuchi-my.sharepoint.com/:x:/g/personal/k-kuraoka_lo-cal-g_com/IQCsVr3gwVZ9RZRHft3G0xuNAV0_RZkk70KssE6AvjKteOo?wdExp=TEAMS-TREATMENT&web=1&TeamsCID=43860f29-bbc8-4cb1-b295-e0cda8c0abd1&linkOpenTime=1781855498132"}],
+ costSavings:{annual:null,monthly:null,note:""}},
 
 {id:21, location:"近見精米工場", category:"物流改善", title:"出荷ライン一体化レイアウト構築", assignee:"深水・山野", dueDate:"2026-06-12", milestoneNote:"",
  content:"①製函機と出荷ラインの接続検証 ②搬送・荷役動線の短縮 ③作業効率向上の確認",
  completionCriteria:"接続・動線短縮を実施し、確保スペース・効率向上効果を確認できていること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"製函機と出荷ラインの接続、台車配置の見直しにより約5パレット分のスペースを確保。緩衝材も出荷場へ移動。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:22, location:"近見精米工場", category:"5S・職場改善", title:"保管エリア最適化（DIY改善）", assignee:"吉村・深水・山野", dueDate:"2026-07-10", milestoneNote:"",
  content:"①保管ルール整備 ②ラック配置見直し ③スペース創出",
  completionCriteria:"資材選別・ライン引き・配送エリア整備が完了していること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"6/27に資材選別・ライン引きを完了。配送エリア番号も塗り、無駄な動きが出ないように整備。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:23, location:"近見精米工場", category:"在庫管理", title:"玄米定温保管能力最適化", assignee:"吉村・深水", dueDate:"2026-07-17", milestoneNote:"",
  content:"①196パレット保管時のレイアウト試算 ②収容効率向上の実施確認",
  completionCriteria:"配置変更を実施し、保管能力向上（パレット数・トン数）を確認できていること",
  originalLabel:"完了", status:"完了",
  latestUpdate:"配置変更により保管能力を180→207パレット（115％）に拡大し、約39.7t分のスペースを確保。",
- risk:"", weeklyLog:[], links:[]},
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:24, location:"近見精米工場", category:"設備導入", title:"ラック棚設置計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"設置予定日は未設定（要確認）",
  content:"①必要ラック数量・仕様の選定 ②設置 ③保管能力向上（+40t）の確認",
  completionCriteria:"設置完了後、保管能力+40tを実績値で確認できていること",
  originalLabel:"進行中", status:"検討中",
  latestUpdate:"6/29経営会議にて補助金を活用して進める方針が決定。今後、設置後の保管能力+40tを見込む。",
- risk:"設置予定日が未設定 → 補助金活用方針の決定を受け、設置予定日を確定する", weeklyLog:[], links:[]},
+ risk:"設置予定日が未設定 → 補助金活用方針の決定を受け、設置予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 
 {id:25, location:"近見精米工場", category:"設備投資・保管能力強化", title:"定温倉庫拡張計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"着工予定日は未設定（要確認）",
  content:"①増設パターン別の収容能力試算 ②投資回収比較 ③着工・拡張完了",
  completionCriteria:"着工・拡張が完了し、収容能力の向上を実績値で確認できていること",
  originalLabel:"進行中", status:"検討中",
  latestUpdate:"いなば建設（約500万円）・九建工（約400万円）の見積りを取得。6/29経営会議で補助金活用の方針が決定。",
- risk:"着工予定日が未設定 → 補助金活用方針の決定を受け、着工予定日を確定する", weeklyLog:[], links:[]},
+ risk:"着工予定日が未設定 → 補助金活用方針の決定を受け、着工予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:2038448,monthly:169870,note:"倉庫配置変更・ラック設置による保管コスト削減試算"}},
 
 {id:26, location:"近見精米工場", category:"在庫適正化", title:"製品在庫ランク管理導入", assignee:"吉村・深水", dueDate:"2026-06-12", milestoneNote:"",
  content:"①ABC分析に基づく製品別適正在庫基準の設定 ②AIを活用した月次・週次の数値化運用の定着",
  completionCriteria:"月次・週次の数値化運用が定着し、継続的に活用されていること（ABC分析完了だけでは完了としない）",
  originalLabel:"完了", status:"効果検証中",
  latestUpdate:"販売実績に基づくABC分析・製品別ランク付けが完了。AIを活用した月次・週次の適正在庫の数値化などは継続検証中。",
- risk:"AIによる数値化運用の定着状況が未確認 → 次回報告で運用定着状況を確認する", weeklyLog:[], links:[]},
+ risk:"AIによる数値化運用の定着状況が未確認 → 次回報告で運用定着状況を確認する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
 ];
 
 const STORE_KEY = "factory_dashboard_v1";
@@ -625,6 +634,7 @@ function cardHtml(i){
   }
   const statusOptions = STATUS_STAGES.map(s=>`<option value="${s}" ${s===i.status?'selected':''}>${s}</option>`).join("");
   const logCount = (i.weeklyLog||[]).length;
+  const cs = i.costSavings || {annual:null,monthly:null,note:""};
   const locOptions = getLocations().map(l=>`<option value="${escapeHtml(l)}" ${l===i.location?'selected':''}>${escapeHtml(l)}</option>`).join("");
   return `<div class="card ${overdue?'overdue-card':''}" id="card-${i.id}">
     <div class="card-top">
@@ -667,6 +677,23 @@ function cardHtml(i){
     <div style="margin-top:10px">
       <div class="field-label">リスク・対応</div>
       <div class="box risk"><textarea placeholder="リスクなし" onblur="updateField(${i.id},'risk',this.value)">${escapeHtml(i.risk)}</textarea></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">削減コスト（任意・資料の可視化に使用）</div>
+      <div class="box" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <div class="field-label" style="margin-bottom:3px">年間（円）</div>
+          <input type="number" class="cost-input" value="${cs.annual??''}" placeholder="例：382200" onblur="updateCostField(${i.id},'annual',this.value)">
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:3px">月間（円）</div>
+          <input type="number" class="cost-input" value="${cs.monthly??''}" placeholder="例：31850" onblur="updateCostField(${i.id},'monthly',this.value)">
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div class="field-label" style="margin-bottom:3px">算出根拠（任意）</div>
+          <input type="text" class="cost-input" style="width:100%" value="${escapeHtml(cs.note||'')}" placeholder="例：人件費2名分の削減試算" onblur="updateCostField(${i.id},'note',this.value)">
+        </div>
+      </div>
     </div>
     <div style="margin-top:10px">
       <div class="field-label">添付ファイル（写真・関連データ）</div>
@@ -760,6 +787,14 @@ function clearMilestone(id){
   updateField(id, "milestoneNote", "");
   const input = document.querySelector(`#card-${id} .milestone-input`);
   if(input) input.value = "";
+}
+
+function updateCostField(id, field, value){
+  const item = items.find(i=>i.id===id);
+  item.costSavings = item.costSavings || {annual:null,monthly:null,note:""};
+  if(field==="note") item.costSavings.note = value;
+  else item.costSavings[field] = value===""? null : Number(value);
+  persistItem(item);
 }
 
 function addNewTask(){
@@ -1083,6 +1118,286 @@ function refreshAttachSection(itemId){
   const el = document.getElementById("attach-"+itemId);
   const item = items.find(i=>i.id===itemId);
   if(el && item) el.innerHTML = attachHtml(item);
+}
+
+// ---- PowerPoint資料作成 ----
+const PPTX_NAVY = "1E2761", PPTX_TEXT = "222A4D", PPTX_MUTED = "6B7591", PPTX_BORDER = "E4E8F2";
+const PPTX_SHADOW = {type:"outer", color:PPTX_NAVY, opacity:0.1, blur:8, offset:2, angle:90};
+
+function pptxFmtDate(iso){
+  if(!iso) return "未設定";
+  const d = new Date(iso+"T00:00:00");
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function blobToDataURL(blob){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function pptxCard(slide, x, y, w, h){
+  slide.addShape("roundRect", {x, y, w, h, fill:{color:"FFFFFF"}, line:{color:PPTX_BORDER, width:1}, rectRadius:0.06, shadow:PPTX_SHADOW});
+}
+
+// 全角文字を1emとして概算し、折り返し後の行数からテキストの必要高さ(インチ)を見積もる
+// 文字幅・行間の見積もりは実際のレンダリングよりやや厳しめ（安全側）に取り、
+// 重なりが再発しないよう常に余裕を残す
+function estimateTextHeight(label, text, widthIn, fontSizePt){
+  const full = (label? label+"：":"") + (text||"-");
+  const SAFETY_WIDTH_FACTOR = 1.18; // 文字幅を実寸より広めに仮定し、行数を多めに見積もる
+  const charWidthIn = (fontSizePt/72) * SAFETY_WIDTH_FACTOR;
+  const charsPerLine = Math.max(5, Math.floor(widthIn/charWidthIn));
+  const paras = String(full).split(/\n/);
+  let lines = 0;
+  paras.forEach(p=>{ lines += Math.max(1, Math.ceil(p.length/charsPerLine)); });
+  const lineHeightIn = (fontSizePt/72)*1.35;
+  return lines*lineHeightIn + 0.1;
+}
+
+function addSectionText(slide, label, text, x, y, w, h, labelColor, fontSize){
+  slide.addText([
+    {text:label+"：", options:{bold:true, color:labelColor, fontSize, breakLine:false}},
+    {text:text||"-", options:{color:"333333", fontSize}}
+  ], {x, y, w, h, fontFace:"Arial", valign:"top", lineSpacingMultiple:1.35, margin:0});
+}
+
+// 内容/完了条件/最新の進捗/リスクの4項目を、テキスト量に応じたフォントサイズと行の高さで配置する
+function computeItemLayout(item, colW, availH){
+  const candidates = [13, 12, 11, 10, 9, 8];
+  const bottomMin = 1.15;
+  const rowGap = 0.25;
+  let chosen = null;
+  for(const fs of candidates){
+    const h1L = estimateTextHeight("何を（内容）", item.content, colW, fs);
+    const h1R = estimateTextHeight("完了条件", item.completionCriteria, colW, fs);
+    const row1H = Math.max(h1L, h1R, 0.35);
+    const h2L = estimateTextHeight("最新の進捗", item.latestUpdate, colW, fs);
+    const h2R = estimateTextHeight("リスク・対応", item.risk||"リスクなし", colW, fs);
+    const row2H = Math.max(h2L, h2R, 0.35);
+    const total = row1H+rowGap+row2H+rowGap+bottomMin;
+    chosen = {fs, row1H, row2H, rowGap, fits: total<=availH};
+    if(chosen.fits || fs===candidates[candidates.length-1]) break;
+  }
+  const usedByRows = chosen.row1H+chosen.rowGap+chosen.row2H+chosen.rowGap;
+  chosen.bottomH = Math.max(bottomMin, availH-usedByRows);
+  return chosen;
+}
+
+function addCostVisualization(slide, cost, x, y, w, h){
+  slide.addText("削減コストの可視化", {x, y, w, h:0.3, fontSize:12, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
+  const hasData = cost && (cost.annual || cost.monthly);
+  if(!hasData){
+    slide.addText("コスト削減効果は未算出です", {x, y:y+0.32, w, h:h-0.32, fontSize:12, color:"9CA3AF", italic:true, fontFace:"Arial", valign:"middle", margin:0});
+    return;
+  }
+  const monthly = cost.monthly || Math.round((cost.annual||0)/12);
+  const annual = cost.annual || (monthly*12);
+  const colW = (w-0.2)/2;
+  slide.addText(`${monthly.toLocaleString()}円`, {x, y:y+0.35, w:colW, h:0.5, fontSize:26, bold:true, color:PPTX_TEXT, fontFace:"Arial", margin:0});
+  slide.addText("月間削減効果", {x, y:y+0.85, w:colW, h:0.28, fontSize:11, color:PPTX_MUTED, fontFace:"Arial", margin:0});
+  slide.addText(`${annual.toLocaleString()}円`, {x:x+colW+0.2, y:y+0.35, w:colW, h:0.5, fontSize:26, bold:true, color:PPTX_TEXT, fontFace:"Arial", margin:0});
+  slide.addText("年間削減効果", {x:x+colW+0.2, y:y+0.85, w:colW, h:0.28, fontSize:11, color:PPTX_MUTED, fontFace:"Arial", margin:0});
+  if(cost.note){
+    slide.addText(cost.note, {x, y:y+h-0.34, w, h:0.32, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:"Arial", margin:0, valign:"top"});
+  }
+}
+
+async function addSideExtras(slide, item, x, y, w, h){
+  const files = fileAttachmentsFor(item.id).filter(f=>f.type.startsWith("image/")).slice(0,2);
+  const links = item.links||[];
+  let cy = y;
+  if(files.length){
+    slide.addText("写真", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
+    cy += 0.28;
+    const thumbW = Math.min(1.6, (w-0.2)/files.length);
+    let cx = x;
+    for(const f of files){
+      try{
+        const dataUrl = await blobToDataURL(f.blob);
+        slide.addImage({data:dataUrl, x:cx, y:cy, w:thumbW, h:thumbW*0.75, sizing:{type:"cover", w:thumbW, h:thumbW*0.75}});
+      }catch(e){ /* skip broken image */ }
+      cx += thumbW+0.15;
+    }
+    cy += thumbW*0.75+0.18;
+  }
+  if(links.length){
+    slide.addText("🔗 関連資料（クリックで開く）", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
+    cy += 0.28;
+    links.slice(0,3).forEach(l=>{
+      const label = (l.label||l.url);
+      const shortLabel = label.length>26? label.slice(0,25)+"…" : label;
+      slide.addText(shortLabel, {x, y:cy, w, h:0.26, fontSize:10.5, color:"1155CC", underline:true, fontFace:"Arial", hyperlink:{url:l.url}, margin:0});
+      cy += 0.28;
+    });
+  }
+}
+
+async function addItemSlide(pptx, item){
+  const slide = pptx.addSlide();
+  slide.background = {color:"F4F6FB"};
+
+  slide.addShape("roundRect", {x:0.55, y:0.4, w:3.2, h:0.5, fill:{color:PPTX_NAVY}, rectRadius:0.19});
+  slide.addText(item.location||"-", {x:0.55, y:0.4, w:3.2, h:0.5, align:"center", valign:"middle", fontSize:14, bold:true, color:"FFFFFF", fontFace:"Arial"});
+
+  const sc = STATUS_HEX[item.status] || STATUS_HEX["未着手"];
+  slide.addShape("roundRect", {x:11.3, y:0.4, w:1.9, h:0.5, fill:{color:sc.bg}, line:{color:sc.border, width:1}, rectRadius:0.19});
+  slide.addText(item.status||"-", {x:11.3, y:0.4, w:1.9, h:0.5, align:"center", valign:"middle", fontSize:13, bold:true, color:sc.border, fontFace:"Arial"});
+
+  slide.addText(`ID ${item.id}　${item.title||""}`, {x:0.55, y:1.05, w:12.2, h:0.5, fontSize:22, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText(`分類：${item.category||"-"}　　担当：${item.assignee||"-"}　　目標期限：${pptxFmtDate(item.dueDate)}`, {x:0.55, y:1.55, w:12.2, h:0.3, fontSize:13, color:PPTX_MUTED, fontFace:"Arial"});
+
+  let cardY = 1.95;
+  if(item.milestoneNote){
+    slide.addText(`📌 ${item.milestoneNote}`, {x:0.55, y:1.85, w:12.2, h:0.28, fontSize:11, color:"B45309", fontFace:"Arial"});
+    cardY = 2.18;
+  }
+
+  const cardX = 0.55, cardW = 12.2, cardH = 7.5-cardY-0.3;
+  pptxCard(slide, cardX, cardY, cardW, cardH);
+
+  const padX = cardX+0.3, colW = (cardW-0.9)/2, gapX = 0.3, rightX = padX+colW+gapX;
+  const topPad = 0.25, bottomPad = 0.25;
+  const availH = cardH - topPad - bottomPad;
+  const layout = computeItemLayout(item, colW, availH);
+  const fs = layout.fs;
+
+  let y = cardY+topPad;
+  addSectionText(slide, "何を（内容）", item.content, padX, y, colW, layout.row1H, PPTX_NAVY, fs);
+  addSectionText(slide, "完了条件", item.completionCriteria, rightX, y, colW, layout.row1H, "0F766E", fs);
+
+  y += layout.row1H + layout.rowGap;
+  addSectionText(slide, "最新の進捗", item.latestUpdate, padX, y, colW, layout.row2H, PPTX_NAVY, fs);
+  addSectionText(slide, "リスク・対応", item.risk||"リスクなし", rightX, y, colW, layout.row2H, "B45309", fs);
+
+  y += layout.row2H + layout.rowGap;
+  const bottomH = layout.bottomH;
+  addCostVisualization(slide, item.costSavings, padX, y, colW, bottomH);
+  await addSideExtras(slide, item, rightX, y, colW, bottomH);
+}
+
+function addAgendaSlide(pptx, locs, items){
+  const slide = pptx.addSlide();
+  slide.background = {color:"FFFFFF"};
+  slide.addText("本日ご報告する内容", {x:0.55, y:0.45, w:11, h:0.7, fontSize:40, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
+
+  const rows = [
+    {title:"全体サマリー", sub:`指摘事項${items.length}件の進捗状況（拠点別・ステータス別）`},
+    ...locs.map(loc=>({title:`${loc}　進捗`, sub:`${items.filter(i=>i.location===loc).length}件のタスク進捗`}))
+  ];
+  rows.forEach((r,idx)=>{
+    const y = 1.55 + idx*0.88;
+    const num = String(idx+1).padStart(2,"0");
+    slide.addShape("ellipse", {x:0.55, y, w:0.62, h:0.62, fill:{color:PPTX_NAVY}});
+    slide.addText(num, {x:0.55, y, w:0.62, h:0.62, align:"center", valign:"middle", fontSize:18, bold:true, color:"FFFFFF", fontFace:"Arial"});
+    slide.addText(r.title, {x:1.45, y:y-0.02, w:6.5, h:0.4, fontSize:18, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+    slide.addText(r.sub, {x:1.45, y:y+0.36, w:8.5, h:0.35, fontSize:14, color:PPTX_MUTED, fontFace:"Arial"});
+  });
+}
+
+function addSummarySlide(pptx, locs, items){
+  const slide = pptx.addSlide();
+  slide.background = {color:"F4F6FB"};
+  slide.addText("全体サマリー", {x:0.55, y:0.1, w:8, h:0.55, fontSize:30, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
+  const today = new Date();
+  slide.addText(`指摘事項　全${items.length}件の進捗状況（${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}時点）`,
+    {x:0.55, y:0.63, w:10, h:0.35, fontSize:15, color:PPTX_MUTED, fontFace:"Arial"});
+
+  const totalCardW = 1.75, tileGap = 0.18;
+  pptxCard(slide, 0.55, 1.1, totalCardW, 1.45);
+  slide.addText(String(items.length), {x:0.55, y:1.18, w:totalCardW, h:0.75, align:"center", fontSize:38, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
+  slide.addText("合計", {x:0.55, y:1.95, w:totalCardW, h:0.35, align:"center", fontSize:13, color:PPTX_MUTED, fontFace:"Arial"});
+
+  const tilesX = 0.55+totalCardW+tileGap;
+  const tileW = (12.2-totalCardW-tileGap*7)/6;
+  STATUS_STAGES.forEach((s,i)=>{
+    const x = tilesX + i*(tileW+tileGap);
+    const sc = STATUS_HEX[s];
+    const n = items.filter(it=>it.status===s).length;
+    pptxCard(slide, x, 1.1, tileW, 1.45);
+    slide.addText(String(n), {x, y:1.18, w:tileW, h:0.75, align:"center", fontSize:32, bold:true, color:sc.border, fontFace:"Arial"});
+    slide.addText(s, {x, y:1.95, w:tileW, h:0.5, align:"center", fontSize:10.5, color:PPTX_MUTED, fontFace:"Arial"});
+  });
+
+  slide.addText("拠点別　進捗状況", {x:0.55, y:2.85, w:5.5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  let ly = 3.35;
+  locs.forEach(loc=>{
+    const list = items.filter(i=>i.location===loc);
+    const total = list.length || 1;
+    slide.addText(`${loc}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+    let bx = 0.55;
+    const barW = 5.5, barH = 0.22;
+    STATUS_STAGES.forEach(s=>{
+      const n = list.filter(i=>i.status===s).length;
+      if(!n) return;
+      const w = barW*(n/total);
+      slide.addShape("rect", {x:bx, y:ly+0.32, w, h:barH, fill:{color:STATUS_HEX[s].border}, line:{type:"none"}});
+      bx += w;
+    });
+    slide.addText(`完了 ${list.filter(i=>i.status==="完了").length}/${list.length}`, {x:0.55, y:ly+0.56, w:5.5, h:0.25, fontSize:10, color:PPTX_MUTED, fontFace:"Arial"});
+    ly += 1.0;
+  });
+
+  slide.addText("全体コスト削減状況", {x:7.4, y:2.85, w:5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  let totalMonthly = 0, totalAnnual = 0;
+  items.forEach(i=>{
+    const cs = i.costSavings;
+    if(cs && (cs.monthly||cs.annual)){
+      totalMonthly += cs.monthly || Math.round((cs.annual||0)/12);
+      totalAnnual += cs.annual || ((cs.monthly||0)*12);
+    }
+  });
+  slide.addText("月間", {x:7.4, y:3.45, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText(`${totalMonthly.toLocaleString()}円`, {x:8.4, y:3.4, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText("年間", {x:7.4, y:4.15, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText(`${totalAnnual.toLocaleString()}円`, {x:8.4, y:4.1, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText("※各項目の「削減コスト」欄に入力された金額の合計です", {x:7.4, y:4.75, w:5, h:0.3, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:"Arial"});
+}
+
+async function generatePptx(){
+  if(typeof PptxGenJS === "undefined"){
+    alert("PowerPoint出力にはインターネット接続が必要です。接続環境を確認してください。");
+    return;
+  }
+  const btn = document.getElementById("pptxBtn");
+  const origLabel = btn.textContent;
+  btn.textContent = "作成中…";
+  btn.disabled = true;
+  try{
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({name:"WIDE", width:13.33, height:7.5});
+    pptx.layout = "WIDE";
+    const locs = getLocations();
+
+    const cover = pptx.addSlide();
+    cover.background = {color:PPTX_NAVY};
+    cover.addText("商品管理部　工場改善進捗報告", {x:0.9, y:2.5, w:11.5, h:0.9, fontSize:32, bold:true, color:"FFFFFF", fontFace:"Arial"});
+    cover.addText("視察指摘事項　アクションプラン進捗", {x:0.9, y:3.3, w:11.5, h:0.5, fontSize:18, color:"CADCFC", fontFace:"Arial"});
+    cover.addText(`対象拠点：${locs.join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:"Arial"});
+    const today = new Date();
+    cover.addText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 出力`, {x:0.9, y:6.6, w:6, h:0.4, fontSize:12, color:"CADCFC", fontFace:"Arial"});
+
+    addAgendaSlide(pptx, locs, items);
+    addSummarySlide(pptx, locs, items);
+
+    const sorted = items.slice().sort((a,b)=>{
+      const la = locs.indexOf(a.location), lb = locs.indexOf(b.location);
+      return la!==lb? la-lb : a.id-b.id;
+    });
+    for(const item of sorted){ await addItemSlide(pptx, item); }
+
+    const stamp = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+    await pptx.writeFile({fileName:`工場改善進捗報告_${stamp}.pptx`});
+  }catch(e){
+    console.error(e);
+    alert("PowerPoint資料の作成に失敗しました。もう一度お試しください。");
+  }finally{
+    btn.textContent = origLabel;
+    btn.disabled = false;
+  }
 }
 
 document.getElementById("searchBox").addEventListener("input", renderList);

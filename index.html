@@ -1162,70 +1162,88 @@ function safePptxUrl(url){
 
 const PPTX_SAFE_IMAGE_TYPES = ["image/png","image/jpeg","image/jpg","image/gif"];
 
+const PPTX_FONT = "游ゴシック";
+const PPTX_INK = "3A3F4B";
+const PPTX_RULE = "E1E5EE";
+
 function pptxCard(slide, x, y, w, h){
-  slide.addShape("roundRect", {x, y, w, h, fill:{color:"FFFFFF"}, line:{color:PPTX_BORDER, width:1}, rectRadius:0.06, shadow:PPTX_SHADOW});
+  slide.addShape("roundRect", {x, y, w, h, fill:{color:"FFFFFF"}, line:{color:"EDEFF5", width:1}, rectRadius:0.05, shadow:PPTX_SHADOW});
+}
+
+// 罫線（セクション間の仕切り線）
+function addDivider(slide, x, y, w){
+  slide.addShape("rect", {x, y, w, h:0.012, fill:{color:PPTX_RULE}, line:{type:"none"}});
 }
 
 // 全角文字を1emとして概算し、折り返し後の行数からテキストの必要高さ(インチ)を見積もる
-// 文字幅・行間の見積もりは実際のレンダリングよりやや厳しめ（安全側）に取り、
-// 重なりが再発しないよう常に余裕を残す
-function estimateTextHeight(label, text, widthIn, fontSizePt){
-  const full = (label? label+"：":"") + (text||"-");
-  const SAFETY_WIDTH_FACTOR = 1.18; // 文字幅を実寸より広めに仮定し、行数を多めに見積もる
+// 実際のレンダリングよりやや厳しめ（安全側）に取り、重なりが再発しないよう常に余裕を残す
+function estimateBodyHeight(text, widthIn, fontSizePt){
+  const SAFETY_WIDTH_FACTOR = 1.18;
   const charWidthIn = (fontSizePt/72) * SAFETY_WIDTH_FACTOR;
   const charsPerLine = Math.max(5, Math.floor(widthIn/charWidthIn));
-  const paras = String(full).split(/\n/);
+  const paras = String(text||"-").split(/\n/);
   let lines = 0;
   paras.forEach(p=>{ lines += Math.max(1, Math.ceil(p.length/charsPerLine)); });
-  const lineHeightIn = (fontSizePt/72)*1.35;
-  return lines*lineHeightIn + 0.1;
+  const lineHeightIn = (fontSizePt/72)*1.4;
+  return lines*lineHeightIn + 0.08;
 }
 
-function addSectionText(slide, label, text, x, y, w, h, labelColor, fontSize){
-  slide.addText([
-    {text:label+"：", options:{bold:true, color:labelColor, fontSize, breakLine:false}},
-    {text:text||"-", options:{color:"333333", fontSize}}
-  ], {x, y, w, h, fontFace:"Arial", valign:"top", lineSpacingMultiple:1.35, margin:0});
+function headingHeight(fontSizePt){
+  return (fontSizePt/72)*1.3 + 0.1;
+}
+
+function estimateSectionHeight(text, widthIn, fontSizePt){
+  return headingHeight(fontSizePt) + estimateBodyHeight(text, widthIn, fontSizePt);
+}
+
+// 見出し（色付きアクセントバー＋ラベル）と本文を分けて配置する、見やすさ重視のセクション描画
+function addSectionBlock(slide, label, text, x, y, w, h, accentColor, fontSize){
+  const headH = headingHeight(fontSize);
+  slide.addShape("rect", {x, y:y+0.02, w:0.045, h:headH-0.14, fill:{color:accentColor}, line:{type:"none"}});
+  slide.addText(label, {x:x+0.16, y, w:w-0.16, h:headH, fontSize, bold:true, color:accentColor, fontFace:PPTX_FONT, valign:"top", margin:0});
+  slide.addText(text||"-", {x, y:y+headH, w, h:Math.max(0.2,h-headH), fontSize, color:PPTX_INK, fontFace:PPTX_FONT, valign:"top", lineSpacingMultiple:1.4, margin:0});
 }
 
 // 内容/完了条件/最新の進捗/リスクの4項目を、テキスト量に応じたフォントサイズと行の高さで配置する
-function computeItemLayout(item, colW, availH){
-  const candidates = [13, 12, 11, 10, 9, 8];
-  const bottomMin = 1.15;
-  const rowGap = 0.25;
+function computeItemLayout(item, innerW, colW, availH){
+  const candidates = [14, 13, 12, 11, 10, 9, 8];
+  const bottomReserve = 0.9; // フォントを縮小するか判断する際に確保したい最低限の下段スペース
+  const bottomFloor = 0.6;   // 最終的に下段へ割り当てる最低の高さ（カード外にはみ出さないよう抑える）
+  const rowGap = 0.28;
   let chosen = null;
   for(const fs of candidates){
-    const h1L = estimateTextHeight("何を（内容）", item.content, colW, fs);
-    const h1R = estimateTextHeight("完了条件", item.completionCriteria, colW, fs);
-    const row1H = Math.max(h1L, h1R, 0.35);
-    const h2L = estimateTextHeight("最新の進捗", item.latestUpdate, colW, fs);
-    const h2R = estimateTextHeight("リスク・対応", item.risk||"リスクなし", colW, fs);
-    const row2H = Math.max(h2L, h2R, 0.35);
-    const total = row1H+rowGap+row2H+rowGap+bottomMin;
-    chosen = {fs, row1H, row2H, rowGap, fits: total<=availH};
+    const row1H = Math.max(estimateSectionHeight(item.content, innerW, fs), 0.5);
+    const h2L = estimateSectionHeight(item.completionCriteria, colW, fs);
+    const h2R = estimateSectionHeight(item.risk||"リスクなし", colW, fs);
+    const row2H = Math.max(h2L, h2R, 0.5);
+    const row3H = Math.max(estimateSectionHeight(item.latestUpdate, innerW, fs), 0.5);
+    const total = row1H+rowGap+row2H+rowGap+row3H+rowGap+bottomReserve;
+    chosen = {fs, row1H, row2H, row3H, rowGap, fits: total<=availH};
     if(chosen.fits || fs===candidates[candidates.length-1]) break;
   }
-  const usedByRows = chosen.row1H+chosen.rowGap+chosen.row2H+chosen.rowGap;
-  chosen.bottomH = Math.max(bottomMin, availH-usedByRows);
+  const used = chosen.row1H+chosen.rowGap+chosen.row2H+chosen.rowGap+chosen.row3H+chosen.rowGap;
+  chosen.bottomH = Math.max(bottomFloor, availH-used);
   return chosen;
 }
 
 function addCostVisualization(slide, cost, x, y, w, h){
-  slide.addText("削減コストの可視化", {x, y, w, h:0.3, fontSize:12, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
+  slide.addText("削減コストの可視化", {x, y, w, h:0.28, fontSize:12, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT, margin:0});
   const hasData = cost && (cost.annual || cost.monthly);
   if(!hasData){
-    slide.addText("コスト削減効果は未算出です", {x, y:y+0.32, w, h:h-0.32, fontSize:12, color:"9CA3AF", italic:true, fontFace:"Arial", valign:"middle", margin:0});
+    slide.addText("コスト削減効果は未算出です", {x, y:y+0.3, w, h:h-0.3, fontSize:12, color:"9CA3AF", italic:true, fontFace:PPTX_FONT, valign:"middle", margin:0});
     return;
   }
   const monthly = cost.monthly || Math.round((cost.annual||0)/12);
   const annual = cost.annual || (monthly*12);
-  const colW = (w-0.2)/2;
-  slide.addText(`${monthly.toLocaleString()}円`, {x, y:y+0.35, w:colW, h:0.5, fontSize:26, bold:true, color:PPTX_TEXT, fontFace:"Arial", margin:0});
-  slide.addText("月間削減効果", {x, y:y+0.85, w:colW, h:0.28, fontSize:11, color:PPTX_MUTED, fontFace:"Arial", margin:0});
-  slide.addText(`${annual.toLocaleString()}円`, {x:x+colW+0.2, y:y+0.35, w:colW, h:0.5, fontSize:26, bold:true, color:PPTX_TEXT, fontFace:"Arial", margin:0});
-  slide.addText("年間削減効果", {x:x+colW+0.2, y:y+0.85, w:colW, h:0.28, fontSize:11, color:PPTX_MUTED, fontFace:"Arial", margin:0});
-  if(cost.note){
-    slide.addText(cost.note, {x, y:y+h-0.34, w, h:0.32, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:"Arial", margin:0, valign:"top"});
+  const colW = (w-0.3)/2;
+  slide.addText(`${monthly.toLocaleString()}円`, {x, y:y+0.34, w:colW, h:0.48, fontSize:24, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT, margin:0});
+  slide.addText("月間削減効果", {x, y:y+0.82, w:colW, h:0.26, fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
+  slide.addShape("rect", {x:x+colW+0.14, y:y+0.32, w:0.012, h:0.75, fill:{color:PPTX_RULE}, line:{type:"none"}});
+  slide.addText(`${annual.toLocaleString()}円`, {x:x+colW+0.3, y:y+0.34, w:colW, h:0.48, fontSize:24, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT, margin:0});
+  slide.addText("年間削減効果", {x:x+colW+0.3, y:y+0.82, w:colW, h:0.26, fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
+  const statsBottom = y+0.82+0.26; // 月間/年間の数値・キャプションが占める範囲の下端
+  if(cost.note && (y+h) - statsBottom >= 0.34){
+    slide.addText(cost.note, {x, y:statsBottom+0.06, w, h:(y+h)-statsBottom-0.06, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:PPTX_FONT, margin:0, valign:"top"});
   }
 }
 
@@ -1236,28 +1254,28 @@ async function addSideExtras(slide, item, x, y, w, h){
   const links = (item.links||[]).map(l=>({label:l.label, url:safePptxUrl(l.url)})).filter(l=>l.url).slice(0,3);
   let cy = y;
   if(files.length){
-    slide.addText("写真", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
-    cy += 0.28;
+    slide.addText("写真", {x, y:cy, w, h:0.24, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT, margin:0});
+    cy += 0.27;
     const thumbW = Math.min(1.6, (w-0.2)/files.length);
     let cx = x;
     for(const f of files){
       try{
         const dataUrl = await blobToDataURL(f.blob);
         if(!/^data:image\/(png|jpe?g|gif);base64,/i.test(dataUrl)) throw new Error("unsupported image data");
-        slide.addImage({data:dataUrl, x:cx, y:cy, w:thumbW, h:thumbW*0.75, sizing:{type:"cover", w:thumbW, h:thumbW*0.75}});
+        slide.addImage({data:dataUrl, x:cx, y:cy, w:thumbW, h:thumbW*0.75, sizing:{type:"cover", w:thumbW, h:thumbW*0.75}, rounding:true});
       }catch(e){ console.warn("画像の埋め込みをスキップしました", item.id, e); }
       cx += thumbW+0.15;
     }
-    cy += thumbW*0.75+0.18;
+    cy += thumbW*0.75+0.2;
   }
   if(links.length){
-    slide.addText("🔗 関連資料（クリックで開く）", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
-    cy += 0.28;
+    slide.addText("🔗 関連資料（クリックで開く）", {x, y:cy, w, h:0.24, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT, margin:0});
+    cy += 0.27;
     links.forEach(l=>{
       const label = safePptxText(l.label||l.url, 60);
       const shortLabel = label.length>26? label.slice(0,25)+"…" : label;
-      slide.addText(shortLabel, {x, y:cy, w, h:0.26, fontSize:10.5, color:"1155CC", underline:true, fontFace:"Arial", hyperlink:{url:l.url}, margin:0});
-      cy += 0.28;
+      slide.addText(shortLabel, {x, y:cy, w, h:0.25, fontSize:10.5, color:"1155CC", underline:true, fontFace:PPTX_FONT, hyperlink:{url:l.url}, margin:0});
+      cy += 0.27;
     });
   }
 }
@@ -1271,49 +1289,57 @@ async function addItemSlide(pptx, rawItem){
     title: safePptxText(rawItem.title, 80),
     status: safePptxText(rawItem.status, 20),
     milestoneNote: safePptxText(rawItem.milestoneNote, 120),
-    content: safePptxText(rawItem.content, 500),
-    completionCriteria: safePptxText(rawItem.completionCriteria, 500),
-    latestUpdate: safePptxText(rawItem.latestUpdate, 500),
-    risk: safePptxText(rawItem.risk, 500)
+    content: safePptxText(rawItem.content, 320),
+    completionCriteria: safePptxText(rawItem.completionCriteria, 320),
+    latestUpdate: safePptxText(rawItem.latestUpdate, 380),
+    risk: safePptxText(rawItem.risk, 320)
   };
 
   const slide = pptx.addSlide();
   slide.background = {color:"F4F6FB"};
 
   slide.addShape("roundRect", {x:0.55, y:0.4, w:3.2, h:0.5, fill:{color:PPTX_NAVY}, rectRadius:0.19});
-  slide.addText(item.location||"-", {x:0.55, y:0.4, w:3.2, h:0.5, align:"center", valign:"middle", fontSize:14, bold:true, color:"FFFFFF", fontFace:"Arial"});
+  slide.addText(item.location||"-", {x:0.55, y:0.4, w:3.2, h:0.5, align:"center", valign:"middle", fontSize:14, bold:true, color:"FFFFFF", fontFace:PPTX_FONT, margin:0});
 
   const sc = STATUS_HEX[rawItem.status] || STATUS_HEX["未着手"];
-  slide.addShape("roundRect", {x:11.3, y:0.4, w:1.9, h:0.5, fill:{color:sc.bg}, line:{color:sc.border, width:1}, rectRadius:0.19});
-  slide.addText(item.status||"-", {x:11.3, y:0.4, w:1.9, h:0.5, align:"center", valign:"middle", fontSize:13, bold:true, color:sc.border, fontFace:"Arial"});
+  slide.addShape("roundRect", {x:11.2, y:0.4, w:2.0, h:0.5, fill:{color:sc.bg}, line:{color:sc.border, width:1}, rectRadius:0.19});
+  slide.addText(item.status||"-", {x:11.2, y:0.4, w:2.0, h:0.5, align:"center", valign:"middle", fontSize:13, bold:true, color:sc.border, fontFace:PPTX_FONT, margin:0});
 
-  slide.addText(`ID ${item.id}　${item.title||""}`, {x:0.55, y:1.05, w:12.2, h:0.5, fontSize:22, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
-  slide.addText(`分類：${item.category||"-"}　　担当：${item.assignee||"-"}　　目標期限：${pptxFmtDate(item.dueDate)}`, {x:0.55, y:1.55, w:12.2, h:0.3, fontSize:13, color:PPTX_MUTED, fontFace:"Arial"});
+  slide.addText(`ID ${item.id}　${item.title||""}`, {x:0.55, y:1.05, w:12.2, h:0.5, fontSize:23, bold:true, color:"1A1F36", fontFace:PPTX_FONT, margin:0});
+  slide.addText(`分類：${item.category||"-"}　｜　担当：${item.assignee||"-"}　｜　目標期限：${pptxFmtDate(item.dueDate)}`, {x:0.55, y:1.55, w:12.2, h:0.3, fontSize:13, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
 
   let cardY = 1.95;
   if(item.milestoneNote){
-    slide.addText(`📌 ${item.milestoneNote}`, {x:0.55, y:1.85, w:12.2, h:0.28, fontSize:11, color:"B45309", fontFace:"Arial"});
+    slide.addText(`📌 ${item.milestoneNote}`, {x:0.55, y:1.85, w:12.2, h:0.28, fontSize:11, color:"B45309", fontFace:PPTX_FONT, margin:0});
     cardY = 2.18;
   }
 
   const cardX = 0.55, cardW = 12.2, cardH = 7.5-cardY-0.3;
   pptxCard(slide, cardX, cardY, cardW, cardH);
 
-  const padX = cardX+0.3, colW = (cardW-0.9)/2, gapX = 0.3, rightX = padX+colW+gapX;
-  const topPad = 0.25, bottomPad = 0.25;
+  const padX = cardX+0.4, innerW = cardW-0.8, gapX = 0.45, colW = (innerW-gapX)/2, rightX = padX+colW+gapX;
+  const topPad = 0.3, bottomPad = 0.3;
   const availH = cardH - topPad - bottomPad;
-  const layout = computeItemLayout(item, colW, availH);
+  const layout = computeItemLayout(item, innerW, colW, availH);
   const fs = layout.fs;
 
   let y = cardY+topPad;
-  addSectionText(slide, "何を（内容）", item.content, padX, y, colW, layout.row1H, PPTX_NAVY, fs);
-  addSectionText(slide, "完了条件", item.completionCriteria, rightX, y, colW, layout.row1H, "0F766E", fs);
+  addSectionBlock(slide, "何を（内容）", item.content, padX, y, innerW, layout.row1H, PPTX_NAVY, fs);
 
-  y += layout.row1H + layout.rowGap;
-  addSectionText(slide, "最新の進捗", item.latestUpdate, padX, y, colW, layout.row2H, PPTX_NAVY, fs);
-  addSectionText(slide, "リスク・対応", item.risk||"リスクなし", rightX, y, colW, layout.row2H, "B45309", fs);
+  y += layout.row1H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
+  addSectionBlock(slide, "完了条件", item.completionCriteria, padX, y, colW, layout.row2H, "0F766E", fs);
+  addSectionBlock(slide, "リスク・対応", item.risk||"リスクなし", rightX, y, colW, layout.row2H, "B45309", fs);
 
-  y += layout.row2H + layout.rowGap;
+  y += layout.row2H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
+  addSectionBlock(slide, "最新の進捗", item.latestUpdate, padX, y, innerW, layout.row3H, PPTX_NAVY, fs);
+
+  y += layout.row3H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
   const bottomH = layout.bottomH;
   addCostVisualization(slide, item.costSavings, padX, y, colW, bottomH);
   await addSideExtras(slide, item, rightX, y, colW, bottomH);
@@ -1322,7 +1348,7 @@ async function addItemSlide(pptx, rawItem){
 function addAgendaSlide(pptx, locs, items){
   const slide = pptx.addSlide();
   slide.background = {color:"FFFFFF"};
-  slide.addText("本日ご報告する内容", {x:0.55, y:0.45, w:11, h:0.7, fontSize:40, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
+  slide.addText("本日ご報告する内容", {x:0.55, y:0.45, w:11, h:0.7, fontSize:40, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
 
   const rows = [
     {title:"全体サマリー", sub:`指摘事項${items.length}件の進捗状況（拠点別・ステータス別）`},
@@ -1332,24 +1358,24 @@ function addAgendaSlide(pptx, locs, items){
     const y = 1.55 + idx*0.88;
     const num = String(idx+1).padStart(2,"0");
     slide.addShape("ellipse", {x:0.55, y, w:0.62, h:0.62, fill:{color:PPTX_NAVY}});
-    slide.addText(num, {x:0.55, y, w:0.62, h:0.62, align:"center", valign:"middle", fontSize:18, bold:true, color:"FFFFFF", fontFace:"Arial"});
-    slide.addText(r.title, {x:1.45, y:y-0.02, w:6.5, h:0.4, fontSize:18, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
-    slide.addText(r.sub, {x:1.45, y:y+0.36, w:8.5, h:0.35, fontSize:14, color:PPTX_MUTED, fontFace:"Arial"});
+    slide.addText(num, {x:0.55, y, w:0.62, h:0.62, align:"center", valign:"middle", fontSize:18, bold:true, color:"FFFFFF", fontFace:PPTX_FONT});
+    slide.addText(r.title, {x:1.45, y:y-0.02, w:6.5, h:0.4, fontSize:18, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+    slide.addText(r.sub, {x:1.45, y:y+0.36, w:8.5, h:0.35, fontSize:14, color:PPTX_MUTED, fontFace:PPTX_FONT});
   });
 }
 
 function addSummarySlide(pptx, locs, items){
   const slide = pptx.addSlide();
   slide.background = {color:"F4F6FB"};
-  slide.addText("全体サマリー", {x:0.55, y:0.1, w:8, h:0.55, fontSize:30, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
+  slide.addText("全体サマリー", {x:0.55, y:0.1, w:8, h:0.55, fontSize:30, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
   const today = new Date();
   slide.addText(`指摘事項　全${items.length}件の進捗状況（${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}時点）`,
-    {x:0.55, y:0.63, w:10, h:0.35, fontSize:15, color:PPTX_MUTED, fontFace:"Arial"});
+    {x:0.55, y:0.63, w:10, h:0.35, fontSize:15, color:PPTX_MUTED, fontFace:PPTX_FONT});
 
   const totalCardW = 1.75, tileGap = 0.18;
   pptxCard(slide, 0.55, 1.1, totalCardW, 1.45);
-  slide.addText(String(items.length), {x:0.55, y:1.18, w:totalCardW, h:0.75, align:"center", fontSize:38, bold:true, color:PPTX_NAVY, fontFace:"Arial"});
-  slide.addText("合計", {x:0.55, y:1.95, w:totalCardW, h:0.35, align:"center", fontSize:13, color:PPTX_MUTED, fontFace:"Arial"});
+  slide.addText(String(items.length), {x:0.55, y:1.18, w:totalCardW, h:0.75, align:"center", fontSize:38, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
+  slide.addText("合計", {x:0.55, y:1.95, w:totalCardW, h:0.35, align:"center", fontSize:13, color:PPTX_MUTED, fontFace:PPTX_FONT});
 
   const tilesX = 0.55+totalCardW+tileGap;
   const tileW = (12.2-totalCardW-tileGap*7)/6;
@@ -1358,16 +1384,16 @@ function addSummarySlide(pptx, locs, items){
     const sc = STATUS_HEX[s];
     const n = items.filter(it=>it.status===s).length;
     pptxCard(slide, x, 1.1, tileW, 1.45);
-    slide.addText(String(n), {x, y:1.18, w:tileW, h:0.75, align:"center", fontSize:32, bold:true, color:sc.border, fontFace:"Arial"});
-    slide.addText(s, {x, y:1.95, w:tileW, h:0.5, align:"center", fontSize:10.5, color:PPTX_MUTED, fontFace:"Arial"});
+    slide.addText(String(n), {x, y:1.18, w:tileW, h:0.75, align:"center", fontSize:32, bold:true, color:sc.border, fontFace:PPTX_FONT});
+    slide.addText(s, {x, y:1.95, w:tileW, h:0.5, align:"center", fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT});
   });
 
-  slide.addText("拠点別　進捗状況", {x:0.55, y:2.85, w:5.5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText("拠点別　進捗状況", {x:0.55, y:2.85, w:5.5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
   let ly = 3.35;
   locs.forEach(loc=>{
     const list = items.filter(i=>i.location===loc);
     const total = list.length || 1;
-    slide.addText(`${safePptxText(loc,40)}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+    slide.addText(`${safePptxText(loc,40)}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
     let bx = 0.55;
     const barW = 5.5, barH = 0.22;
     STATUS_STAGES.forEach(s=>{
@@ -1377,11 +1403,11 @@ function addSummarySlide(pptx, locs, items){
       slide.addShape("rect", {x:bx, y:ly+0.32, w, h:barH, fill:{color:STATUS_HEX[s].border}, line:{type:"none"}});
       bx += w;
     });
-    slide.addText(`完了 ${list.filter(i=>i.status==="完了").length}/${list.length}`, {x:0.55, y:ly+0.56, w:5.5, h:0.25, fontSize:10, color:PPTX_MUTED, fontFace:"Arial"});
+    slide.addText(`完了 ${list.filter(i=>i.status==="完了").length}/${list.length}`, {x:0.55, y:ly+0.56, w:5.5, h:0.25, fontSize:10, color:PPTX_MUTED, fontFace:PPTX_FONT});
     ly += 1.0;
   });
 
-  slide.addText("全体コスト削減状況", {x:7.4, y:2.85, w:5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+  slide.addText("全体コスト削減状況", {x:7.4, y:2.85, w:5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
   let totalMonthly = 0, totalAnnual = 0;
   items.forEach(i=>{
     const cs = i.costSavings;
@@ -1390,11 +1416,11 @@ function addSummarySlide(pptx, locs, items){
       totalAnnual += cs.annual || ((cs.monthly||0)*12);
     }
   });
-  slide.addText("月間", {x:7.4, y:3.45, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
-  slide.addText(`${totalMonthly.toLocaleString()}円`, {x:8.4, y:3.4, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:"Arial"});
-  slide.addText("年間", {x:7.4, y:4.15, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
-  slide.addText(`${totalAnnual.toLocaleString()}円`, {x:8.4, y:4.1, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:"Arial"});
-  slide.addText("※各項目の「削減コスト」欄に入力された金額の合計です", {x:7.4, y:4.75, w:5, h:0.3, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:"Arial"});
+  slide.addText("月間", {x:7.4, y:3.45, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText(`${totalMonthly.toLocaleString()}円`, {x:8.4, y:3.4, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText("年間", {x:7.4, y:4.15, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText(`${totalAnnual.toLocaleString()}円`, {x:8.4, y:4.1, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText("※各項目の「削減コスト」欄に入力された金額の合計です", {x:7.4, y:4.75, w:5, h:0.3, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:PPTX_FONT});
 }
 
 async function generatePptx(){
@@ -1414,11 +1440,11 @@ async function generatePptx(){
 
     const cover = pptx.addSlide();
     cover.background = {color:PPTX_NAVY};
-    cover.addText("商品管理部　工場改善進捗報告", {x:0.9, y:2.5, w:11.5, h:0.9, fontSize:32, bold:true, color:"FFFFFF", fontFace:"Arial"});
-    cover.addText("視察指摘事項　アクションプラン進捗", {x:0.9, y:3.3, w:11.5, h:0.5, fontSize:18, color:"CADCFC", fontFace:"Arial"});
-    cover.addText(`対象拠点：${locs.map(l=>safePptxText(l,40)).join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:"Arial"});
+    cover.addText("商品管理部　工場改善進捗報告", {x:0.9, y:2.5, w:11.5, h:0.9, fontSize:32, bold:true, color:"FFFFFF", fontFace:PPTX_FONT});
+    cover.addText("視察指摘事項　アクションプラン進捗", {x:0.9, y:3.3, w:11.5, h:0.5, fontSize:18, color:"CADCFC", fontFace:PPTX_FONT});
+    cover.addText(`対象拠点：${locs.map(l=>safePptxText(l,40)).join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:PPTX_FONT});
     const today = new Date();
-    cover.addText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 出力`, {x:0.9, y:6.6, w:6, h:0.4, fontSize:12, color:"CADCFC", fontFace:"Arial"});
+    cover.addText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 出力`, {x:0.9, y:6.6, w:6, h:0.4, fontSize:12, color:"CADCFC", fontFace:PPTX_FONT});
 
     addAgendaSlide(pptx, locs, items);
     addSummarySlide(pptx, locs, items);

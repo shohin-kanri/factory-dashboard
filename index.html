@@ -1127,6 +1127,7 @@ const PPTX_SHADOW = {type:"outer", color:PPTX_NAVY, opacity:0.1, blur:8, offset:
 function pptxFmtDate(iso){
   if(!iso) return "未設定";
   const d = new Date(iso+"T00:00:00");
+  if(isNaN(d.getTime())) return "未設定";
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
 }
 
@@ -1138,6 +1139,28 @@ function blobToDataURL(blob){
     reader.readAsDataURL(blob);
   });
 }
+
+// PowerPointが「コンテンツに問題」と判定しないよう、テキストを安全な文字列に正規化する
+// （制御文字の除去、異常な長文のトリミング）
+function safePptxText(value, maxLen){
+  let s = (value===null || value===undefined) ? "" : String(value);
+  // タブ・改行以外の制御文字（不可視のゴミ文字）を除去
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  const limit = maxLen || 600;
+  if(s.length > limit) s = s.slice(0, limit) + "…（全文はダッシュボードを参照）";
+  return s;
+}
+
+// http/https の絶対URLのみを許可する（それ以外はハイパーリンク化しない）
+function safePptxUrl(url){
+  try{
+    const u = new URL(String(url||""));
+    if(u.protocol==="http:" || u.protocol==="https:") return u.href;
+  }catch(e){}
+  return null;
+}
+
+const PPTX_SAFE_IMAGE_TYPES = ["image/png","image/jpeg","image/jpg","image/gif"];
 
 function pptxCard(slide, x, y, w, h){
   slide.addShape("roundRect", {x, y, w, h, fill:{color:"FFFFFF"}, line:{color:PPTX_BORDER, width:1}, rectRadius:0.06, shadow:PPTX_SHADOW});
@@ -1207,8 +1230,10 @@ function addCostVisualization(slide, cost, x, y, w, h){
 }
 
 async function addSideExtras(slide, item, x, y, w, h){
-  const files = fileAttachmentsFor(item.id).filter(f=>f.type.startsWith("image/")).slice(0,2);
-  const links = item.links||[];
+  const files = fileAttachmentsFor(item.id)
+    .filter(f=> PPTX_SAFE_IMAGE_TYPES.includes((f.type||"").toLowerCase()) && f.blob && f.blob.size>0 && f.blob.size<15*1024*1024)
+    .slice(0,2);
+  const links = (item.links||[]).map(l=>({label:l.label, url:safePptxUrl(l.url)})).filter(l=>l.url).slice(0,3);
   let cy = y;
   if(files.length){
     slide.addText("写真", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
@@ -1218,8 +1243,9 @@ async function addSideExtras(slide, item, x, y, w, h){
     for(const f of files){
       try{
         const dataUrl = await blobToDataURL(f.blob);
+        if(!/^data:image\/(png|jpe?g|gif);base64,/i.test(dataUrl)) throw new Error("unsupported image data");
         slide.addImage({data:dataUrl, x:cx, y:cy, w:thumbW, h:thumbW*0.75, sizing:{type:"cover", w:thumbW, h:thumbW*0.75}});
-      }catch(e){ /* skip broken image */ }
+      }catch(e){ console.warn("画像の埋め込みをスキップしました", item.id, e); }
       cx += thumbW+0.15;
     }
     cy += thumbW*0.75+0.18;
@@ -1227,8 +1253,8 @@ async function addSideExtras(slide, item, x, y, w, h){
   if(links.length){
     slide.addText("🔗 関連資料（クリックで開く）", {x, y:cy, w, h:0.25, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:"Arial", margin:0});
     cy += 0.28;
-    links.slice(0,3).forEach(l=>{
-      const label = (l.label||l.url);
+    links.forEach(l=>{
+      const label = safePptxText(l.label||l.url, 60);
       const shortLabel = label.length>26? label.slice(0,25)+"…" : label;
       slide.addText(shortLabel, {x, y:cy, w, h:0.26, fontSize:10.5, color:"1155CC", underline:true, fontFace:"Arial", hyperlink:{url:l.url}, margin:0});
       cy += 0.28;
@@ -1236,14 +1262,28 @@ async function addSideExtras(slide, item, x, y, w, h){
   }
 }
 
-async function addItemSlide(pptx, item){
+async function addItemSlide(pptx, rawItem){
+  const item = {
+    ...rawItem,
+    location: safePptxText(rawItem.location, 40),
+    category: safePptxText(rawItem.category, 40),
+    assignee: safePptxText(rawItem.assignee, 60),
+    title: safePptxText(rawItem.title, 80),
+    status: safePptxText(rawItem.status, 20),
+    milestoneNote: safePptxText(rawItem.milestoneNote, 120),
+    content: safePptxText(rawItem.content, 500),
+    completionCriteria: safePptxText(rawItem.completionCriteria, 500),
+    latestUpdate: safePptxText(rawItem.latestUpdate, 500),
+    risk: safePptxText(rawItem.risk, 500)
+  };
+
   const slide = pptx.addSlide();
   slide.background = {color:"F4F6FB"};
 
   slide.addShape("roundRect", {x:0.55, y:0.4, w:3.2, h:0.5, fill:{color:PPTX_NAVY}, rectRadius:0.19});
   slide.addText(item.location||"-", {x:0.55, y:0.4, w:3.2, h:0.5, align:"center", valign:"middle", fontSize:14, bold:true, color:"FFFFFF", fontFace:"Arial"});
 
-  const sc = STATUS_HEX[item.status] || STATUS_HEX["未着手"];
+  const sc = STATUS_HEX[rawItem.status] || STATUS_HEX["未着手"];
   slide.addShape("roundRect", {x:11.3, y:0.4, w:1.9, h:0.5, fill:{color:sc.bg}, line:{color:sc.border, width:1}, rectRadius:0.19});
   slide.addText(item.status||"-", {x:11.3, y:0.4, w:1.9, h:0.5, align:"center", valign:"middle", fontSize:13, bold:true, color:sc.border, fontFace:"Arial"});
 
@@ -1286,7 +1326,7 @@ function addAgendaSlide(pptx, locs, items){
 
   const rows = [
     {title:"全体サマリー", sub:`指摘事項${items.length}件の進捗状況（拠点別・ステータス別）`},
-    ...locs.map(loc=>({title:`${loc}　進捗`, sub:`${items.filter(i=>i.location===loc).length}件のタスク進捗`}))
+    ...locs.map(loc=>({title:`${safePptxText(loc,40)}　進捗`, sub:`${items.filter(i=>i.location===loc).length}件のタスク進捗`}))
   ];
   rows.forEach((r,idx)=>{
     const y = 1.55 + idx*0.88;
@@ -1327,7 +1367,7 @@ function addSummarySlide(pptx, locs, items){
   locs.forEach(loc=>{
     const list = items.filter(i=>i.location===loc);
     const total = list.length || 1;
-    slide.addText(`${loc}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
+    slide.addText(`${safePptxText(loc,40)}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:"Arial"});
     let bx = 0.55;
     const barW = 5.5, barH = 0.22;
     STATUS_STAGES.forEach(s=>{
@@ -1376,7 +1416,7 @@ async function generatePptx(){
     cover.background = {color:PPTX_NAVY};
     cover.addText("商品管理部　工場改善進捗報告", {x:0.9, y:2.5, w:11.5, h:0.9, fontSize:32, bold:true, color:"FFFFFF", fontFace:"Arial"});
     cover.addText("視察指摘事項　アクションプラン進捗", {x:0.9, y:3.3, w:11.5, h:0.5, fontSize:18, color:"CADCFC", fontFace:"Arial"});
-    cover.addText(`対象拠点：${locs.join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:"Arial"});
+    cover.addText(`対象拠点：${locs.map(l=>safePptxText(l,40)).join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:"Arial"});
     const today = new Date();
     cover.addText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 出力`, {x:0.9, y:6.6, w:6, h:0.4, fontSize:12, color:"CADCFC", fontFace:"Arial"});
 
@@ -1387,10 +1427,24 @@ async function generatePptx(){
       const la = locs.indexOf(a.location), lb = locs.indexOf(b.location);
       return la!==lb? la-lb : a.id-b.id;
     });
-    for(const item of sorted){ await addItemSlide(pptx, item); }
+    const skipped = [];
+    for(const item of sorted){
+      try{
+        await addItemSlide(pptx, item);
+      }catch(e){
+        console.warn("スライド作成をスキップしました（データに問題がある可能性）", item.id, e);
+        skipped.push(item.id);
+      }
+    }
+    if(skipped.length){
+      console.warn(`ID ${skipped.join(", ")} のスライドを作成できませんでした`);
+    }
 
     const stamp = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
     await pptx.writeFile({fileName:`工場改善進捗報告_${stamp}.pptx`});
+    if(skipped.length){
+      alert(`一部の項目（ID ${skipped.join(", ")}）はデータの問題によりスライドを作成できませんでした。それ以外は正常に出力されています。`);
+    }
   }catch(e){
     console.error(e);
     alert("PowerPoint資料の作成に失敗しました。もう一度お試しください。");

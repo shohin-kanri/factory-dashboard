@@ -548,8 +548,13 @@ function renderLocSummary(){
   }).join("");
 }
 
+const RISK_DUE_THRESHOLD_DAYS = 10;
+
 function riskItems(){
-  return items.filter(i=>i.risk && i.risk.trim()!=="").sort((a,b)=>{
+  return items.filter(i=>{
+    const du = daysUntil(i.dueDate);
+    return du!==null && du<=RISK_DUE_THRESHOLD_DAYS && i.status!=="完了";
+  }).sort((a,b)=>{
     const da=daysUntil(a.dueDate), db=daysUntil(b.dueDate);
     return (da===null?9999:da)-(db===null?9999:db);
   });
@@ -565,12 +570,16 @@ function renderRiskPanel(){
     let dueCls="", dueLabel=fmtDate(i.dueDate);
     if(du!==null){
       if(du<0){dueCls="overdue"; dueLabel += `（${-du}日超過）`;}
-      else if(du<=7){dueCls="soon"; dueLabel += `（残り${du}日）`;}
+      else if(du<=RISK_DUE_THRESHOLD_DAYS){dueCls="soon"; dueLabel += `（残り${du}日）`;}
     }
+    const hasRisk = i.risk && i.risk.trim()!=="";
+    const riskHtml = hasRisk
+      ? escapeHtml(i.risk)
+      : `<span style="color:var(--muted);font-style:italic">リスク未記入（期限が近いため表示）</span>`;
     return `<div class="risk-row">
       <div class="risk-id">ID${i.id}</div>
       <div class="risk-title">${escapeHtml(i.title)}</div>
-      <div class="risk-text">${escapeHtml(i.risk)}</div>
+      <div class="risk-text">${riskHtml}</div>
       <div class="risk-due ${dueCls}">${dueLabel}</div>
     </div>`;
   }).join("");

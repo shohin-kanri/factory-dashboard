@@ -442,7 +442,9 @@ function persistItem(item){
 }
 
 function spItemsToLocal(spItems){
-  return spItems.map(r=> JSON.parse(r.DataJson)).sort((a,b)=>a.id-b.id);
+  return spItems.map(r=> JSON.parse(r.DataJson))
+    .filter(obj=> typeof obj.id === "number")
+    .sort((a,b)=>a.id-b.id);
 }
 
 async function initSharePointSync(){
@@ -484,6 +486,7 @@ async function pollSharePoint(){
     const remoteMap = {};
     spItems.forEach(r=>{
       const obj = JSON.parse(r.DataJson);
+      if(typeof obj.id !== "number") return;
       remoteMap[obj.id] = obj;
     });
     let changed = false;

@@ -466,6 +466,17 @@ async function initSharePointSync(){
   }
 }
 
+function isUserEditingCard(id){
+  const active = document.activeElement;
+  if(!active) return false;
+  const card = document.getElementById("card-"+id);
+  return !!(card && card.contains(active));
+}
+function isUserEditingAnyCard(){
+  const active = document.activeElement;
+  return !!(active && active.closest && active.closest(".card"));
+}
+
 async function pollSharePoint(){
   if(!spEnabled) return;
   try{
@@ -477,6 +488,7 @@ async function pollSharePoint(){
     });
     let changed = false;
     Object.values(remoteMap).forEach(robj=>{
+      if(isUserEditingCard(robj.id)) return;
       const idx = items.findIndex(i=>i.id===robj.id);
       const localStr = idx>=0? JSON.stringify(items[idx]) : null;
       if(localStr !== JSON.stringify(robj)){
@@ -485,10 +497,12 @@ async function pollSharePoint(){
         refreshCardIfPresent(robj.id);
       }
     });
-    const remoteIds = new Set(Object.keys(remoteMap).map(Number));
-    const before = items.length;
-    items = items.filter(i=>remoteIds.has(i.id));
-    if(items.length!==before){ changed = true; renderList(); }
+    if(!isUserEditingAnyCard()){
+      const remoteIds = new Set(Object.keys(remoteMap).map(Number));
+      const before = items.length;
+      items = items.filter(i=>remoteIds.has(i.id));
+      if(items.length!==before){ changed = true; renderList(); }
+    }
     if(changed){
       saveState();
       renderSummary(); renderLocSummary(); renderRiskPanel(); renderTabs();

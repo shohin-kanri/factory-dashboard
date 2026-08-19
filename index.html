@@ -1,0 +1,1397 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>工場改善プロジェクト 進捗管理ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --border:#e3e5ea; --text:#1f2430; --muted:#6b7280;
+  --navy:#1E2761; --ice:#CADCFC;
+  --c-michaku:#9ca3af; --c-kento:#8b5cf6; --c-jisshi:#3b82f6; --c-kouka:#f59e0b;
+  --c-hyojun:#14b8a6; --c-kanryo:#22c55e; --c-danger:#ef4444; --c-warn:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Yu Gothic UI","Meiryo",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+header{background:var(--navy);color:#fff;padding:22px 28px}
+header h1{margin:0 0 4px;font-size:22px;font-weight:700}
+header p{margin:0;color:var(--ice);font-size:13px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+.summary{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center}
+.sum-card .num{font-size:24px;font-weight:700}
+.sum-card .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.loc-summary{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.loc-card{flex:1;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.loc-card .name{font-weight:700;font-size:13px;margin-bottom:6px}
+.loc-bar{height:8px;border-radius:4px;overflow:hidden;display:flex;background:#eee}
+.loc-bar span{height:100%}
+.loc-meta{font-size:11px;color:var(--muted);margin-top:4px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fafbfc}
+.panel-head h2{margin:0;font-size:15px}
+.panel-body{padding:14px 16px}
+.risk-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px;align-items:flex-start}
+.risk-row:last-child{border-bottom:none}
+.risk-id{flex:0 0 46px;font-weight:700;color:var(--navy)}
+.risk-title{flex:0 0 220px;font-weight:600}
+.risk-text{flex:1;color:#444}
+.risk-due{flex:0 0 110px;text-align:right;font-size:12px}
+.overdue{color:var(--c-danger);font-weight:700}
+.soon{color:var(--c-warn);font-weight:700}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab-btn{border:1px solid var(--border);background:#fff;border-radius:20px;padding:6px 14px;font-size:12.5px;cursor:pointer;color:#444}
+.tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip{border:1px solid var(--border);background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;color:#444;user-select:none}
+.chip.active{color:#fff;border-color:transparent}
+input[type=search]{border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;min-width:220px}
+.spacer{flex:1}
+.btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;color:#333}
+.btn:hover{background:#f0f1f3}
+.btn.danger{color:var(--c-danger);border-color:#f3c9c9}
+
+.list{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.card.overdue-card{border-color:#f3c2c2}
+.card-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.idtag{background:var(--navy);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+.loctag{background:#eef1fb;color:var(--navy);border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:600}
+.cattag{background:#f3f3f5;color:#555;border-radius:6px;padding:2px 8px;font-size:11.5px}
+select.loctag{border:none;font-family:inherit;cursor:pointer}
+input.cattag{border:none;font-family:inherit;width:110px}
+.title{font-size:15.5px;font-weight:700;margin:8px 0 4px;flex-basis:100%}
+.title-input{font-size:15.5px;font-weight:700;margin:8px 0 4px;flex-basis:100%;border:none;background:transparent;border-bottom:1px dashed transparent;padding:2px 0;font-family:inherit;color:var(--text);width:100%}
+.title-input:hover{border-bottom-color:var(--border)}
+.title-input:focus{outline:none;border-bottom-color:var(--navy)}
+.meta-line{font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.meta-line b{color:#333;font-weight:600}
+.meta-line input, .meta-line select{border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-size:12.5px;font-family:inherit}
+.del-task{color:var(--c-danger);cursor:pointer;font-size:11.5px;margin-left:auto}
+
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:16px;padding:4px 12px;font-size:12.5px;font-weight:700;color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.field-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.box{background:#f8f9fb;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.box.criteria{background:#eef8f4;border-color:#cdeade}
+.box.risk{background:#fff6ec;border-color:#f3ddb8}
+textarea{width:100%;border:none;background:transparent;resize:none;overflow-y:hidden;font-family:inherit;font-size:13px;min-height:44px;padding:0}
+textarea:focus{outline:1px solid var(--navy);border-radius:4px}
+.milestone-input{flex:1;min-width:200px}
+.cost-input{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12.5px;width:140px;box-sizing:border-box}
+
+.log-toggle{margin-top:10px;font-size:12.5px;color:var(--navy);cursor:pointer;font-weight:600;user-select:none}
+.log-toggle::before{content:"▸";display:inline-block;margin-right:6px}
+.log-toggle.open::before{content:"▾"}
+.log-section{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.log-section.open{display:block}
+.log-subtoggle{font-size:12px;color:var(--navy);cursor:pointer;font-weight:600;user-select:none}
+.log-subtoggle::before{content:"▸";display:inline-block;margin-right:6px}
+.log-subtoggle.open::before{content:"▾"}
+.log-form-section{display:none;margin-top:8px}
+.log-form-section.open{display:block}
+.log-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.log-form textarea{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-height:36px}
+.log-form input{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;width:100%;box-sizing:border-box}
+.log-form label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+.log-entries{display:flex;flex-direction:column;gap:8px}
+.log-entry{background:#fbfbfc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px}
+.log-entry .date{font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;justify-content:space-between}
+.log-entry .del{color:var(--c-danger);cursor:pointer;font-weight:400;font-size:11px}
+.log-entry dl{margin:0;display:grid;grid-template-columns:90px 1fr;gap:2px 8px}
+.log-entry dt{color:var(--muted)}
+.log-entry dd{margin:0;white-space:pre-wrap}
+footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px}
+.empty{text-align:center;color:var(--muted);padding:30px}
+
+.attach-subtitle{font-size:11px;font-weight:700;color:var(--muted);margin:0 0 6px}
+.attach-subtitle:not(:first-child){margin-top:14px}
+.attach-empty{color:var(--muted);font-size:12px;margin-bottom:8px}
+
+.attach-del{color:var(--c-danger);cursor:pointer;font-size:10.5px;display:block;margin-top:2px}
+
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.attach-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+.attach-row a{color:var(--navy);text-decoration:none;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-row a:hover{text-decoration:underline}
+.attach-row .attach-del{margin-top:0}
+.attach-icon{font-size:15px;flex:0 0 auto}
+.attach-url{color:var(--muted);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-form{display:flex;gap:6px;flex-wrap:wrap}
+.attach-form input{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12.5px;font-family:inherit}
+.attach-form input.label{flex:0 0 180px}
+.attach-form input.url{flex:1;min-width:200px}
+</style>
+</head>
+<body>
+<header>
+  <h1>工場改善プロジェクト 進捗管理ダッシュボード</h1>
+  <p>商品管理部 各拠点</p>
+</header>
+<div class="wrap">
+
+  <div class="summary" id="summary"></div>
+  <div class="loc-summary" id="locSummary"></div>
+
+  <div class="panel" id="riskPanel">
+    <div class="panel-head" onclick="toggleRiskPanel()">
+      <h2>⚠ 要フォロー・リスク一覧（<span id="riskCount">0</span>件）</h2>
+      <span id="riskCaret">▾</span>
+    </div>
+    <div class="panel-body" id="riskBody"></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="locTabs"></div>
+    <div class="tabs" id="statusChips"></div>
+    <input type="search" id="searchBox" placeholder="ID・改善内容・担当で検索">
+    <span class="spacer"></span>
+    <span id="syncStatus" style="font-size:12px;color:var(--muted)"></span>
+    <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="addNewTask()">＋ 新規タスクを追加</button>
+    <button class="btn" id="pptxBtn" onclick="generatePptx()">📊 PowerPoint資料作成</button>
+    <button class="btn" onclick="exportJSON()">JSONエクスポート</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">JSONインポート</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    <button class="btn danger" onclick="resetData()">初期データに戻す</button>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="empty" id="emptyMsg" style="display:none">条件に一致する項目がありません</div>
+
+  <footer>編集内容は自動保存され、SharePointを通じて他の端末・拠点とも同期されます。写真や資料は、SharePoint・Google Drive等にアップロードしたうえで「クラウドリンク」として添付してください。</footer>
+</div>
+
+<script>
+const STATUS_STAGES = ["未着手","検討中","実施中","効果検証中","標準化","完了"];
+const STATUS_COLORS = {
+  "未着手":"var(--c-michaku)", "検討中":"var(--c-kento)", "実施中":"var(--c-jisshi)",
+  "効果検証中":"var(--c-kouka)", "標準化":"var(--c-hyojun)", "完了":"var(--c-kanryo)"
+};
+const STATUS_HEX = {
+  "未着手":{bg:"E9EAEE", border:"9CA3AF"}, "検討中":{bg:"EFE9FB", border:"8B5CF6"},
+  "実施中":{bg:"E3EEFD", border:"3B82F6"}, "効果検証中":{bg:"FDF1DC", border:"F59E0B"},
+  "標準化":{bg:"DEF7F2", border:"14B8A6"}, "完了":{bg:"E5F2E6", border:"2E7D32"}
+};
+const LOC_PALETTE = ["#3b82f6","#f59e0b","#14b8a6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#ec4899"];
+function getLocations(){
+  const seen = [];
+  items.forEach(i=>{ if(i.location && !seen.includes(i.location)) seen.push(i.location); });
+  return seen;
+}
+function locColor(loc){
+  const idx = getLocations().indexOf(loc);
+  return LOC_PALETTE[idx>=0? idx%LOC_PALETTE.length : 0];
+}
+
+const DEFAULT_ITEMS = [
+{id:1, location:"合志工場（食肉）", category:"生産性向上", title:"深絞り真空機ドウェルタイム最適化検証", assignee:"松井", dueDate:"2026-06-20", milestoneNote:"",
+ content:"①現行設定値の実測データ取得 ②品質維持可能な最短ドウェルタイムの検証 ③サイクルタイム短縮による生産能力向上効果の算出",
+ completionCriteria:"③まで実施し、生産性向上効果（％）を数値で確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"ドウェルタイム設定を見直し、真空・シール工程のサイクルタイムを0.3秒削減。生産性+4%を確認し検証完了。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:2, location:"合志工場（食肉）", category:"人員最適", title:"鶏肉加工ライン省人化・レイアウト改善", assignee:"松井", dueDate:"2026-06-10", milestoneNote:"",
+ content:"①現行作業動線分析 ②2名削減を前提とした設備配置の見直し ③生産能力維持条件の検証",
+ completionCriteria:"③生産能力維持条件の検証まで完了していること（レイアウト変更だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"作業動線の見直しと2名削減後の配置図は完成（鶏肉に加え豚肉製造にも展開可）。ただし③は豚肉の加工がまだのため生産能力維持条件を確認できておらず未達成。想定コスト削減効果：約58,800円/年（約4,900円/月）。",
+ risk:"③生産能力維持条件の検証が豚肉加工未実施のため確認できていない → 豚肉加工開始後に検証を実施し、完了判定はその後に行う", weeklyLog:[], links:[], costSavings:{annual:4586400,monthly:382200,note:"パート2名分の人件費削減試算"}},
+
+{id:3, location:"合志工場（食肉）", category:"在庫管理", title:"製品・原料在庫適正化", assignee:"松井・野村・倉岡", dueDate:"2026-09-30", milestoneNote:"ふるさと納税の駆け込み需要期までに完了予定",
+ content:"①自社倉庫の棚卸し ②外注倉庫在庫の可視化 ③滞留在庫・過剰在庫の削減計画策定（数値目標化）",
+ completionCriteria:"削減目標を「◯％削減」の形で数値化し、その達成をもって完了とする",
+ originalLabel:"進行中", status:"実施中",
+ latestUpdate:"炭火鶏・うなぎ・馬刺し・ペットフード等の滞留在庫についてEC／ふるさと納税での販売強化を継続中。豚・鶏の販売計画を数値化して管理中。削減目標は次回報告までに数値化して設定する。",
+ risk:"在庫削減の数値目標が未設定で、進捗を定量的に追えていない → 次回報告までに削減目標％を確定させる", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:4, location:"合志工場（食肉）", category:"品質管理", title:"商品別解凍時間標準化", assignee:"松井・野村・倉岡", dueDate:"2026-06-15", milestoneNote:"",
+ content:"①商品ごとの解凍条件調査 ②標準解凍時間の設定 ③製造計画・標準書への反映と教育",
+ completionCriteria:"標準解凍時間を標準書に反映し、現場教育まで完了していること",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"冷凍商品の品温維持を前提に、商品別に常温環境下での許容作業時間を検証。出荷作業は原則45分以内を目安とし、商品別の品温上昇データ・季節要因・出荷場温度を踏まえ必要に応じて保冷対策・作業手順を見直す運用とした。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:5, location:"合志工場（食肉）", category:"物流改善", title:"出荷場レイアウト変更", assignee:"野村・松井", dueDate:"2026-07-15", milestoneNote:"稟議承認予定日・着工予定日は未設定（要確認）",
+ content:"①冷蔵・冷凍庫前への移設検討 ②運搬距離短縮効果測定 ③荷役作業効率向上",
+ completionCriteria:"施工完了後、運搬距離短縮効果を測定できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"自社施工を検討していたが、建物オーナー確認の結果、業者施工で進行。ホシザキより概算10万円の見積りを口頭で受領し、現在正式見積書を依頼中。取得後、稟議承認を経て着工予定。",
+ risk:"業者の正式見積り・稟議承認が未完了で着工が遅れる可能性 → 見積り取得後速やかに稟議を通し、着工予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:6, location:"合志工場（食肉）", category:"倉庫運用", title:"冷蔵庫スペース有効活用", assignee:"山野", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①冷蔵庫内空きスペース調査 ②米保管運用（10℃前後）の検証 ③保管コスト削減効果試算",
+ completionCriteria:"庫内温度管理課題（結露・カビリスク）を解消し、恒常運用として定着していること",
+ originalLabel:"進行中（検討案件）", status:"検討中",
+ latestUpdate:"原料保管の配置を見直し5パレット分を確保。ただし現在の庫内設定は0℃のため、玄米を常温環境へ出す際に結露が生じやすく、水分を吸ってカビ・変色の原因となるリスクがある。この温度管理課題の解消をもって完了とする。想定コスト影響：年間約373万円（月311,116円）。",
+ risk:"庫内温度差により結露・カビ発生リスクが残っている → 保管温度帯の見直しまたは区画分けを検討", weeklyLog:[], links:[], costSavings:{annual:3734000,monthly:311116,note:"保管料・入庫料の試算に基づくコスト影響"}},
+
+{id:7, location:"合志工場（干し芋）", category:"包装改善", title:"干し芋200g包材仕様見直し", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"新包材への切替予定日は未設定（在庫消化後の見込み）",
+ content:"①現行包材コスト分析 ②代替包材の選定 ③新包材への切替実施",
+ completionCriteria:"新包材への切替完了をもって完了とする（選定・試算だけでは完了としない）",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"包材の縦寸法を4cmカットし袋1枚あたり￥4.75削減、年間約26.6万円（月約22,160円）のコスト削減を試算。現在庫（約4万枚）は年間販売ペースから約8〜9ヶ月で消化見込み（2027年3月頃、実績ペースによる概算）。切替完了をもって本タスクの完了とする。",
+ risk:"現行在庫の消化に数ヶ月を要し、実際の切替は先になる見込み → 切替予定時期を明確化し標準書へ反映する", weeklyLog:[], links:[], costSavings:{annual:266000,monthly:22160,note:"包材切替（縦4cmカット）による削減試算"}},
+
+{id:8, location:"合志工場（干し芋）", category:"商品戦略", title:"レトルト加工基準策定", assignee:"平田・松井", dueDate:"2026-07-31", milestoneNote:"",
+ content:"①2025年販売実績分析 ②商品別収益性評価 ③レトルト化対象商品の選定基準作成",
+ completionCriteria:"レトルト殺菌なし製品の菌検査・水分値測定結果を確認し、選定基準として確定していること",
+ originalLabel:"進行中", status:"効果検証中",
+ latestUpdate:"販売実績・収益性の分析は完了（2025年年間収益￥8,438,504、EC200g粗利52%等）。レトルト殺菌の必要性を再評価し、レトルト殺菌なし製品の試作・加速検査を外部機関に提出済み。商品化に向け進行中。",
+ risk:"外部機関の検査結果待ちで完了時期が検査納期に左右される → 検査機関へ納期を確認", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:9, location:"合志工場（干し芋）", category:"作業分析", title:"オーブントレイ工程工数測定", assignee:"平田", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①皮むき工程工数測定 ②スライス工程工数測定 ③充填工程を含めた1名当たり生産性算出",
+ completionCriteria:"測定結果から必要人員シミュレーターを作成し、作業人員の算出まで完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"各工程の所要時間を実測し、約24.4%の生産性向上余地を確認。作業スピードの標準化・指導の基準化を期待。結果をもとに必要人員シミュレーターを作成後、作業人員を算出。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:10, location:"合志工場（干し芋）", category:"生産管理", title:"製造計画構築（原料ベース）", assignee:"平田", dueDate:"2026-07-10", milestoneNote:"",
+ content:"①販売推移分析 ②適正在庫設定 ③生産能力を踏まえた月次計画の策定",
+ completionCriteria:"生産能力を踏まえた月次計画の策定まで完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"2025年出庫実績の推移分析に基づき適正在庫水準を設定。生産能力を踏まえた月次計画の策定を完了。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:11, location:"合志工場（干し芋）", category:"原価低減", title:"水道光熱費削減検証", assignee:"倉岡・平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①ベルト式真空機稼働実績分析 ②工程間待機時間削減の運用変更 ③エネルギー使用量最適化効果の確認",
+ completionCriteria:"待機時電力・水道を抑える運用変更を実施し、効果を確認できていること（試算だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"真空機の稼働時間と電気・水道コストを試算（能力900P/1h、電気代1h120円・水道代1h30円）。稼働をまとめることで待機時の電力・水道使用を抑える運用に変更予定。",
+ risk:"運用変更が「予定」の段階で未実施 → 運用ルール化し、現場定着を確認したうえで完了判定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:12, location:"合志工場（干し芋）", category:"工程改善", title:"一日完結型生産体制構築", assignee:"平田", dueDate:"2026-07-12", milestoneNote:"",
+ content:"①現行工程分析 ②工程分断要因の抽出 ③製造リードタイム短縮効果の確認",
+ completionCriteria:"リードタイム短縮効果を数値で確認できていること",
+ originalLabel:"進行中", status:"効果検証中",
+ latestUpdate:"1ロットを小型化し在庫の適正化とリコール時の廃棄リスク・リコール費用低減に寄与。リードタイム短縮効果は引き続き検証中。",
+ risk:"リードタイム短縮効果の定量検証が未完了 → データがまとまり次第、効果を数値化する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:13, location:"合志工場（干し芋）", category:"設備改善", title:"フック導入検討", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①使用目的の明確化 ②必要数量の算出 ③投資対効果評価",
+ completionCriteria:"導入後の作業量・効果（加工量の増加等）を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"フックを2つ導入し作業負担を軽減。水冷槽の底板を取り除くことにより、水冷加工1回あたりの総量が180kg→240kgに増加。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:14, location:"合志工場（干し芋）", category:"設備レイアウト", title:"水切り工程レイアウト設計", assignee:"平田・松井", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①現場動線調査 ②レイアウト案の作成・施工 ③投資効果（作業時間短縮・動線短縮）の定量確認",
+ completionCriteria:"レイアウト変更に加え、作業時間短縮・動線短縮の効果を数値で確認できていること",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"レイアウト変更完了。コンテナを釜の横に配置し作業動線を短縮、水冷槽前のスペースを確保して水冷作業の作業性が向上。水冷後のコンテナは台車に直接乗せそのままオーブンへ移動し不要な作業を削減。",
+ risk:"レイアウト変更の効果（時間短縮等）が定量化されていない → 効果を数値化し報告に追記する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:15, location:"合志工場（干し芋）", category:"作業環境改善", title:"作業机高さ適正化", assignee:"平田", dueDate:"2026-06-30", milestoneNote:"",
+ content:"①高さ調整方法の検討 ②必要寸法の算出 ③施工・効果確認",
+ completionCriteria:"施工完了し、作業負担・作業スピードへの効果が確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"パート従業員の要望を反映し高さを10cm変更。6/26に施工完了し、作業時の負担や姿勢悪化による作業スピード低下を防止。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:16, location:"玉東水工場", category:"生産管理", title:"24時間稼働対応製造計画構築", assignee:"江藤・山野・倉岡", dueDate:"2026-07-15", milestoneNote:"",
+ content:"①受注予測に基づく生産計画・人員配置の最適化 ②省人化体制の実現 ③稼働率向上の確認",
+ completionCriteria:"設備投資の可否決定を経て、24時間稼働体制が実運用として稼働していること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"画像検査機・ケースパッカー等の導入で現行4名体制から2〜3名以下運用を検討中。24時間稼働の体制案を作成し社内調整中（画像検査機100〜200万円、ケースパッカー中古機で100〜300万円）。",
+ risk:"画像検査機・ケースパッカー等の設備投資が未決定 → 経営会議へ上申し投資可否を決定する", weeklyLog:[], links:[], costSavings:{annual:22075200,monthly:1839600,note:"24時間稼働全時間帯でパート2名削減した場合の人件費試算"}},
+
+{id:17, location:"玉東水工場", category:"品質・設備管理", title:"光電管設置による異常検知強化", assignee:"江藤・倉岡", dueDate:"2026-07-08", milestoneNote:"セットアップ完了予定日は未設定（要確認）",
+ content:"①ブロー機への光電管設置 ②充填機への光電管設置 ③停止ロス・品質事故削減効果の検証",
+ completionCriteria:"セットアップ完了後、停止ロス・品質事故の削減効果を確認できていること",
+ originalLabel:"進行中", status:"実施中",
+ latestUpdate:"ブロー機の未使用光電管を移設しメーカーと連携してシステム設定を進めていたが、調整に想定以上の時間を要し対応が長引いた。その後、自社で必要な部材を選定・調達し、現在は機器が揃いセットアップを進めている。想定コスト削減効果：約436,800円/月。",
+ risk:"セットアップ完了予定日が未設定 → 担当者へ確認し期日を設定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:18, location:"玉東水工場", category:"生産性向上", title:"熱殺菌工程立上げ・立下げ時間短縮", assignee:"江藤", dueDate:"2026-08-31", milestoneNote:"",
+ content:"①液処理設備の工程分析 ②立上げ時間2.5時間短縮の施策立案（バイパス工事／熱処理機増強） ③施策実行と効果確認",
+ completionCriteria:"投資判断（バイパス工事 約100万円 or 熱処理機増強 約250万円）を経て施策を実行し、立上げ時間短縮効果を確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"水処理改修（バイパス工事）を検討。殺菌頻度を24時間→48時間に緩和する案は安全性の観点から中長期検討課題。バイパス工事（概算100万円）は大幅な時間短縮につながらない可能性が高く、熱処理機の能力増強（概算250万円）の方が立上げ時間を約半分に短縮できる見込みとの提案あり。",
+ risk:"対応策（バイパス工事 or 熱処理機増強）の投資判断が未決定 → 費用対効果を比較し経営判断を仰ぐ", weeklyLog:[], links:[], costSavings:{annual:31061500,monthly:2588458,note:"熱処理機能力増強による稼働増加分の売上増加試算（コスト削減ではなく増収効果）"}},
+
+{id:19, location:"玉東水工場", category:"倉庫のレイアウト", title:"古い順から取り出せる倉庫レイアウトへの変更", assignee:"江藤", dueDate:"2026-07-15", milestoneNote:"",
+ content:"①米倉庫と同様の横出し配置へのレイアウト変更 ②運用としての定着確認",
+ completionCriteria:"レイアウト変更を実施し、先入れ先出しの運用が定着していること",
+ originalLabel:"進行中（検討案件）", status:"未着手",
+ latestUpdate:"倉庫が満載のため着手できておらず、4週連続で状況変わらず。スペース確保出来次第実行予定。",
+ risk:"倉庫スペース不足により4週間着手できず停滞 → 優先順位を見直し、暫定的なスペースを確保する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:20, location:"近見精米工場", category:"レイアウト管理", title:"工場レイアウト図面標準化", assignee:"林田さん", dueDate:"2026-06-30", milestoneNote:"次はハンバーグ工場へ展開予定",
+ content:"①実寸ベースのレイアウト図作成 ②全拠点への横展開",
+ completionCriteria:"対象となる全拠点への横展開が完了していること（精米・合志の作成だけでは完了としない）",
+ originalLabel:"完了", status:"標準化",
+ latestUpdate:"精米工場・合志工場のレイアウト図を作成し、他拠点にも展開を開始（次はハンバーグ工場を予定）。",
+ risk:"全拠点への横展開が完了していない → 横展開スケジュールを明確化する", weeklyLog:[],
+ links:[{label:"レイアウト図面（SharePoint）", url:"https://cms00moriuchi-my.sharepoint.com/:x:/g/personal/k-kuraoka_lo-cal-g_com/IQCsVr3gwVZ9RZRHft3G0xuNAV0_RZkk70KssE6AvjKteOo?wdExp=TEAMS-TREATMENT&web=1&TeamsCID=43860f29-bbc8-4cb1-b295-e0cda8c0abd1&linkOpenTime=1781855498132"}],
+ costSavings:{annual:null,monthly:null,note:""}},
+
+{id:21, location:"近見精米工場", category:"物流改善", title:"出荷ライン一体化レイアウト構築", assignee:"深水・山野", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①製函機と出荷ラインの接続検証 ②搬送・荷役動線の短縮 ③作業効率向上の確認",
+ completionCriteria:"接続・動線短縮を実施し、確保スペース・効率向上効果を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"製函機と出荷ラインの接続、台車配置の見直しにより約5パレット分のスペースを確保。緩衝材も出荷場へ移動。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:22, location:"近見精米工場", category:"5S・職場改善", title:"保管エリア最適化（DIY改善）", assignee:"吉村・深水・山野", dueDate:"2026-07-10", milestoneNote:"",
+ content:"①保管ルール整備 ②ラック配置見直し ③スペース創出",
+ completionCriteria:"資材選別・ライン引き・配送エリア整備が完了していること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"6/27に資材選別・ライン引きを完了。配送エリア番号も塗り、無駄な動きが出ないように整備。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:23, location:"近見精米工場", category:"在庫管理", title:"玄米定温保管能力最適化", assignee:"吉村・深水", dueDate:"2026-07-17", milestoneNote:"",
+ content:"①196パレット保管時のレイアウト試算 ②収容効率向上の実施確認",
+ completionCriteria:"配置変更を実施し、保管能力向上（パレット数・トン数）を確認できていること",
+ originalLabel:"完了", status:"完了",
+ latestUpdate:"配置変更により保管能力を180→207パレット（115％）に拡大し、約39.7t分のスペースを確保。",
+ risk:"", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:24, location:"近見精米工場", category:"設備導入", title:"ラック棚設置計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"設置予定日は未設定（要確認）",
+ content:"①必要ラック数量・仕様の選定 ②設置 ③保管能力向上（+40t）の確認",
+ completionCriteria:"設置完了後、保管能力+40tを実績値で確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"6/29経営会議にて補助金を活用して進める方針が決定。今後、設置後の保管能力+40tを見込む。",
+ risk:"設置予定日が未設定 → 補助金活用方針の決定を受け、設置予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+
+{id:25, location:"近見精米工場", category:"設備投資・保管能力強化", title:"定温倉庫拡張計画策定", assignee:"倉岡", dueDate:"2026-12-31", milestoneNote:"着工予定日は未設定（要確認）",
+ content:"①増設パターン別の収容能力試算 ②投資回収比較 ③着工・拡張完了",
+ completionCriteria:"着工・拡張が完了し、収容能力の向上を実績値で確認できていること",
+ originalLabel:"進行中", status:"検討中",
+ latestUpdate:"いなば建設（約500万円）・九建工（約400万円）の見積りを取得。6/29経営会議で補助金活用の方針が決定。",
+ risk:"着工予定日が未設定 → 補助金活用方針の決定を受け、着工予定日を確定する", weeklyLog:[], links:[], costSavings:{annual:2038448,monthly:169870,note:"倉庫配置変更・ラック設置による保管コスト削減試算"}},
+
+{id:26, location:"近見精米工場", category:"在庫適正化", title:"製品在庫ランク管理導入", assignee:"吉村・深水", dueDate:"2026-06-12", milestoneNote:"",
+ content:"①ABC分析に基づく製品別適正在庫基準の設定 ②AIを活用した月次・週次の数値化運用の定着",
+ completionCriteria:"月次・週次の数値化運用が定着し、継続的に活用されていること（ABC分析完了だけでは完了としない）",
+ originalLabel:"完了", status:"効果検証中",
+ latestUpdate:"販売実績に基づくABC分析・製品別ランク付けが完了。AIを活用した月次・週次の適正在庫の数値化などは継続検証中。",
+ risk:"AIによる数値化運用の定着状況が未確認 → 次回報告で運用定着状況を確認する", weeklyLog:[], links:[], costSavings:{annual:null,monthly:null,note:""}},
+];
+
+const STORE_KEY = "factory_dashboard_v1";
+let items = loadState();
+let filterLoc = "すべて";
+let filterStatus = new Set(STATUS_STAGES);
+let riskOnly = false;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+}
+function saveState(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(items)); }catch(e){} }
+
+// ---- SharePoint 同期（Power Automate フロー経由） ----
+const SP_GET_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/08/workflows/df76e889c59d4261b6f72465506202ff/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=YyYlkrRbpvf4eY7AUEqjhMkytECW9igg6KUFwaBwQFw";
+const SP_SAVE_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/20/workflows/824fdd23704a4e75be4f020572b0aa0c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=EXT6Slf3IWnABzEH6MiUn4FZbKIhMhCoQ8vuzFlWlQE";
+const SP_DELETE_URL = "https://default068cc3d366e24ec6b40a2b8f99e440.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/26/workflows/5a037f01697e497aa209703646381442/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xhGJmbMZNd-7L8xYlgqU6SnWyLumjWETp8FgikE5GaI";
+const SP_POLL_INTERVAL_MS = 5000;
+let spEnabled = false;
+let pollTimer = null;
+
+function setSyncStatus(state){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  const map = {
+    online: "🟢 SharePoint同期中",
+    offline: "⚪ ローカル保存のみ（SharePoint未接続）",
+    error: "🔴 SharePoint接続エラー（ローカル保存のみで継続）",
+    syncing: "🔄 SharePointと同期しています…"
+  };
+  el.textContent = map[state] || "";
+}
+
+async function spGetAllItems(){
+  const res = await fetch(SP_GET_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({})
+  });
+  if(!res.ok) throw new Error("list fetch failed: "+res.status);
+  return await res.json();
+}
+
+async function spSaveItem(item){
+  const res = await fetch(SP_SAVE_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({taskId:item.id, title:item.title||"(無題)", dataJson:JSON.stringify(item)})
+  });
+  if(!res.ok) throw new Error("save failed: "+res.status);
+}
+
+async function spDeleteItem(taskId){
+  const res = await fetch(SP_DELETE_URL, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({taskId})
+  });
+  if(!res.ok) throw new Error("delete failed: "+res.status);
+}
+
+function persistItem(item){
+  saveState();
+  if(!spEnabled) return;
+  spSaveItem(item).catch(e=>{ console.warn("SharePoint更新に失敗しました", e); setSyncStatus("error"); });
+}
+
+function spItemsToLocal(spItems){
+  return spItems.map(r=> JSON.parse(r.DataJson))
+    .filter(obj=> typeof obj.id === "number")
+    .sort((a,b)=>a.id-b.id);
+}
+
+async function initSharePointSync(){
+  try{
+    setSyncStatus("syncing");
+    const remote = spItemsToLocal(await spGetAllItems());
+    if(remote.length===0){
+      for(const it of items){ await spSaveItem(it); }
+    } else {
+      items = remote;
+      saveState();
+    }
+    spEnabled = true;
+    setSyncStatus("online");
+    renderAll();
+    if(!pollTimer) pollTimer = setInterval(pollSharePoint, SP_POLL_INTERVAL_MS);
+  }catch(e){
+    spEnabled = false;
+    setSyncStatus("offline");
+    console.warn("SharePoint同期が利用できません。ローカル保存のみで動作します。", e);
+  }
+}
+
+function isUserEditingCard(id){
+  const active = document.activeElement;
+  if(!active) return false;
+  const card = document.getElementById("card-"+id);
+  return !!(card && card.contains(active));
+}
+function isUserEditingAnyCard(){
+  const active = document.activeElement;
+  return !!(active && active.closest && active.closest(".card"));
+}
+
+async function pollSharePoint(){
+  if(!spEnabled) return;
+  try{
+    const spItems = await spGetAllItems();
+    const remoteMap = {};
+    spItems.forEach(r=>{
+      const obj = JSON.parse(r.DataJson);
+      if(typeof obj.id !== "number") return;
+      remoteMap[obj.id] = obj;
+    });
+    let changed = false;
+    Object.values(remoteMap).forEach(robj=>{
+      if(isUserEditingCard(robj.id)) return;
+      const idx = items.findIndex(i=>i.id===robj.id);
+      const localStr = idx>=0? JSON.stringify(items[idx]) : null;
+      if(localStr !== JSON.stringify(robj)){
+        if(idx>=0) items[idx] = robj; else items.push(robj);
+        changed = true;
+        refreshCardIfPresent(robj.id);
+      }
+    });
+    if(!isUserEditingAnyCard()){
+      const remoteIds = new Set(Object.keys(remoteMap).map(Number));
+      const before = items.length;
+      items = items.filter(i=>remoteIds.has(i.id));
+      if(items.length!==before){ changed = true; renderList(); }
+    }
+    if(changed){
+      saveState();
+      renderSummary(); renderLocSummary(); renderRiskPanel(); renderTabs();
+    }
+    setSyncStatus("online");
+  }catch(e){
+    setSyncStatus("error");
+  }
+}
+
+function refreshCardIfPresent(id){
+  const el = document.getElementById("card-"+id);
+  const item = items.find(i=>i.id===id);
+  if(el && item){
+    el.outerHTML = cardHtml(item);
+    autoSizeTextareasIn(document.getElementById("card-"+id));
+  } else {
+    renderList();
+  }
+}
+
+function fmtDate(iso){
+  if(!iso) return "未設定";
+  const d = new Date(iso+"T00:00:00");
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+function daysUntil(iso){
+  if(!iso) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(iso+"T00:00:00");
+  return Math.round((d-today)/86400000);
+}
+
+function renderSummary(){
+  const el = document.getElementById("summary");
+  el.innerHTML = STATUS_STAGES.map(s=>{
+    const n = items.filter(i=>i.status===s).length;
+    return `<div class="sum-card"><div class="num" style="color:${STATUS_COLORS[s]}">${n}</div><div class="lbl">${s}</div></div>`;
+  }).join("");
+}
+
+function renderLocSummary(){
+  const el = document.getElementById("locSummary");
+  el.innerHTML = getLocations().map(loc=>{
+    const list = items.filter(i=>i.location===loc);
+    const total = list.length;
+    const doneN = list.filter(i=>i.status==="完了").length;
+    const bars = STATUS_STAGES.map(s=>{
+      const n = list.filter(i=>i.status===s).length;
+      const pct = total? (n/total*100):0;
+      return pct? `<span style="width:${pct}%;background:${STATUS_COLORS[s]}"></span>`:"";
+    }).join("");
+    return `<div class="loc-card">
+      <div class="name">${loc}（${total}件）</div>
+      <div class="loc-bar">${bars}</div>
+      <div class="loc-meta">完了 ${doneN}/${total}</div>
+    </div>`;
+  }).join("");
+}
+
+const RISK_DUE_THRESHOLD_DAYS = 10;
+
+function riskItems(){
+  return items.filter(i=>{
+    const du = daysUntil(i.dueDate);
+    return du!==null && du<=RISK_DUE_THRESHOLD_DAYS && i.status!=="完了";
+  }).sort((a,b)=>{
+    const da=daysUntil(a.dueDate), db=daysUntil(b.dueDate);
+    return (da===null?9999:da)-(db===null?9999:db);
+  });
+}
+
+function renderRiskPanel(){
+  const list = riskItems();
+  document.getElementById("riskCount").textContent = list.length;
+  const body = document.getElementById("riskBody");
+  if(list.length===0){ body.innerHTML = `<div class="empty">現在フラグの立っているリスクはありません</div>`; return; }
+  body.innerHTML = list.map(i=>{
+    const du = daysUntil(i.dueDate);
+    let dueCls="", dueLabel=fmtDate(i.dueDate);
+    if(du!==null){
+      if(du<0){dueCls="overdue"; dueLabel += `（${-du}日超過）`;}
+      else if(du<=RISK_DUE_THRESHOLD_DAYS){dueCls="soon"; dueLabel += `（残り${du}日）`;}
+    }
+    const hasRisk = i.risk && i.risk.trim()!=="";
+    const riskHtml = hasRisk
+      ? escapeHtml(i.risk)
+      : `<span style="color:var(--muted);font-style:italic">リスク未記入（期限が近いため表示）</span>`;
+    return `<div class="risk-row">
+      <div class="risk-id">ID${i.id}</div>
+      <div class="risk-title">${escapeHtml(i.title)}</div>
+      <div class="risk-text">${riskHtml}</div>
+      <div class="risk-due ${dueCls}">${dueLabel}</div>
+    </div>`;
+  }).join("");
+}
+
+function toggleRiskPanel(){
+  const body = document.getElementById("riskBody");
+  const caret = document.getElementById("riskCaret");
+  const collapsed = body.style.display==="none";
+  body.style.display = collapsed? "block":"none";
+  caret.textContent = collapsed? "▾":"▸";
+}
+
+function renderTabs(){
+  const locEl = document.getElementById("locTabs");
+  const locs = ["すべて",...getLocations()];
+  locEl.innerHTML = locs.map(l=>`<button class="tab-btn ${l===filterLoc?'active':''}" onclick="setLoc('${l.replace(/'/g,"&#39;")}')">${l}</button>`).join("");
+
+  const stEl = document.getElementById("statusChips");
+  stEl.innerHTML = STATUS_STAGES.map(s=>{
+    const active = filterStatus.has(s);
+    return `<span class="chip ${active?'active':''}" style="${active?`background:${STATUS_COLORS[s]}`:''}" onclick="toggleStatus('${s}')">${s}</span>`;
+  }).join("") + `<span class="chip" onclick="toggleRiskOnly()" style="${riskOnly?'background:#ef4444;color:#fff;border-color:transparent':''}">要フォローのみ</span>`;
+}
+
+function setLoc(l){ filterLoc=l; renderTabs(); renderList(); }
+function toggleStatus(s){
+  if(filterStatus.has(s)) filterStatus.delete(s); else filterStatus.add(s);
+  renderTabs(); renderList();
+}
+function toggleRiskOnly(){ riskOnly=!riskOnly; renderTabs(); renderList(); }
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+// ---- テキストエリアの自動高さ調整 ----
+// 入力量に応じて枠の高さを内容にぴったり合わせる（スクロールバーを出さない）
+function autoSizeTextarea(el){
+  if(!el) return;
+  // 非表示（折りたたまれた定期フォローログ等）は高さを測れないためスキップし、
+  // 表示されたタイミングで再計算する
+  if(el.offsetParent === null) return;
+  const cs = getComputedStyle(el);
+  const borderY = (parseFloat(cs.borderTopWidth)||0) + (parseFloat(cs.borderBottomWidth)||0);
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + borderY) + "px";
+}
+
+function autoSizeTextareasIn(root){
+  (root||document).querySelectorAll("textarea").forEach(autoSizeTextarea);
+}
+
+// 入力中はその都度、内容に合わせて伸縮させる
+document.addEventListener("input", e=>{
+  if(e.target && e.target.tagName === "TEXTAREA") autoSizeTextarea(e.target);
+});
+
+function renderList(){
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  let filtered = items.filter(i=>{
+    if(filterLoc!=="すべて" && i.location!==filterLoc) return false;
+    if(!filterStatus.has(i.status)) return false;
+    if(riskOnly && (!i.risk || i.risk.trim()==="")) return false;
+    if(q){
+      const hay = `${i.id} ${i.title} ${i.assignee} ${i.content} ${i.category}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const listEl = document.getElementById("list");
+  document.getElementById("emptyMsg").style.display = filtered.length? "none":"block";
+  listEl.innerHTML = filtered.map(cardHtml).join("");
+  autoSizeTextareasIn(listEl);
+}
+
+function cardHtml(i){
+  const du = daysUntil(i.dueDate);
+  const overdue = du!==null && du<0 && i.status!=="完了";
+  let dueNote = "";
+  if(i.status!=="完了" && du!==null){
+    if(du<0) dueNote = `<span class="overdue">（${-du}日超過）</span>`;
+    else if(du<=7) dueNote = `<span class="soon">（残り${du}日）</span>`;
+  }
+  const statusOptions = STATUS_STAGES.map(s=>`<option value="${s}" ${s===i.status?'selected':''}>${s}</option>`).join("");
+  const logCount = (i.weeklyLog||[]).length;
+  const cs = i.costSavings || {annual:null,monthly:null,note:""};
+  const locOptions = getLocations().map(l=>`<option value="${escapeHtml(l)}" ${l===i.location?'selected':''}>${escapeHtml(l)}</option>`).join("");
+  return `<div class="card ${overdue?'overdue-card':''}" id="card-${i.id}">
+    <div class="card-top">
+      <span class="idtag">ID ${i.id}</span>
+      <select class="loctag" style="background:${locColor(i.location)}22;color:${locColor(i.location)}" onchange="handleLocationChange(${i.id},this)">
+        ${locOptions}
+        <option value="__new__">＋ 新しい拠点</option>
+      </select>
+      <input class="cattag" value="${escapeHtml(i.category)}" placeholder="分類" onblur="updateField(${i.id},'category',this.value)">
+      <span style="flex:1"></span>
+      <select onchange="updateField(${i.id},'status',this.value)" class="badge" style="background:${STATUS_COLORS[i.status]};border:none">
+        ${statusOptions}
+      </select>
+      <span class="del-task" onclick="deleteTask(${i.id})">🗑 タスクを削除</span>
+      <input class="title-input" value="${escapeHtml(i.title)}" placeholder="タイトルを入力" onblur="updateField(${i.id},'title',this.value)">
+      <div class="meta-line">
+        <span>誰が：<input type="text" value="${escapeHtml(i.assignee)}" placeholder="担当者" onblur="updateField(${i.id},'assignee',this.value)"></span>
+        <span>いつまでに：<b><input type="date" value="${i.dueDate}" onchange="updateField(${i.id},'dueDate',this.value)"></b> ${dueNote}</span>
+      </div>
+    </div>
+    <div class="meta-line" style="margin-top:-6px">
+      <span style="color:#b45309">📌</span>
+      <input type="text" class="milestone-input" value="${escapeHtml(i.milestoneNote||"")}" placeholder="備考・マイルストーンを入力（任意）" onblur="updateField(${i.id},'milestoneNote',this.value)">
+      <span class="attach-del" onclick="clearMilestone(${i.id})">削除</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="field-label">何を（内容）</div>
+        <div class="box"><textarea onblur="updateField(${i.id},'content',this.value)">${escapeHtml(i.content)}</textarea></div>
+      </div>
+      <div>
+        <div class="field-label">どの状態になれば完了とするか（完了条件）</div>
+        <div class="box criteria"><textarea onblur="updateField(${i.id},'completionCriteria',this.value)">${escapeHtml(i.completionCriteria)}</textarea></div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">最新の進捗</div>
+      <div class="box"><textarea onblur="updateField(${i.id},'latestUpdate',this.value)">${escapeHtml(i.latestUpdate)}</textarea></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">リスク・対応</div>
+      <div class="box risk"><textarea placeholder="リスクなし" onblur="updateField(${i.id},'risk',this.value)">${escapeHtml(i.risk)}</textarea></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="field-label">削減コスト（任意・資料の可視化に使用）</div>
+      <div class="box" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <div class="field-label" style="margin-bottom:3px">年間（円）</div>
+          <input type="text" inputmode="numeric" class="cost-input" value="${fmtCost(cs.annual)}" placeholder="例：382,200" oninput="formatCostInput(this)" onblur="updateCostField(${i.id},'annual',this.value)">
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:3px">月間（円）</div>
+          <input type="text" inputmode="numeric" class="cost-input" value="${fmtCost(cs.monthly)}" placeholder="例：31,850" oninput="formatCostInput(this)" onblur="updateCostField(${i.id},'monthly',this.value)">
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div class="field-label" style="margin-bottom:3px">算出根拠（任意）</div>
+          <input type="text" class="cost-input" style="width:100%" value="${escapeHtml(cs.note||'')}" placeholder="例：人件費2名分の削減試算" onblur="updateCostField(${i.id},'note',this.value)">
+        </div>
+      </div>
+    </div>
+    <div class="log-toggle" id="logtog-${i.id}" onclick="toggleLog(${i.id})">定期フォローログ（${logCount}件）</div>
+    <div class="log-section" id="log-${i.id}">
+      <div class="log-subtoggle" id="logformtog-${i.id}" onclick="toggleLogForm(${i.id})">新しい記録を追加</div>
+      <div class="log-form-section" id="logform-${i.id}">
+        <div class="log-form">
+          <div style="grid-column:1/-1"><label>記入者</label><input type="text" id="lr-${i.id}" placeholder="氏名"></div>
+          <div><label>前回から進んだこと</label><textarea id="lp-${i.id}"></textarea></div>
+          <div><label>現在困っていること</label><textarea id="li-${i.id}"></textarea></div>
+          <div><label>次回までにやること</label><textarea id="ln-${i.id}"></textarea></div>
+          <div><label>完了予定日の変更</label><textarea id="ld-${i.id}"></textarea></div>
+        </div>
+        <button class="btn" onclick="addLog(${i.id})">この内容で記録を追加</button>
+      </div>
+      <div class="log-entries" style="margin-top:10px">
+        ${(i.weeklyLog||[]).slice().reverse().map((l,idx)=>logEntryHtml(i,l,(i.weeklyLog.length-1-idx))).join("")}
+      </div>
+    </div>
+    <div class="log-toggle" id="attachtog-${i.id}" onclick="toggleAttach(${i.id})">${attachToggleLabel(i)}</div>
+    <div class="log-section" id="attachwrap-${i.id}">
+      <div class="box" id="attach-${i.id}">${attachHtml(i)}</div>
+    </div>
+  </div>`;
+}
+
+function attachToggleLabel(item){
+  return `添付ファイル・関連リンク（${(item.links||[]).length}件）`;
+}
+
+function logEntryHtml(item,l,realIdx){
+  return `<div class="log-entry">
+    <div class="date">${l.date} <span class="del" onclick="deleteLog(${item.id},${realIdx})">削除</span></div>
+    <dl>
+      <dt>記入者</dt><dd>${escapeHtml(l.reporter||"-")}</dd>
+      <dt>進んだこと</dt><dd>${escapeHtml(l.progress||"-")}</dd>
+      <dt>困っていること</dt><dd>${escapeHtml(l.issue||"-")}</dd>
+      <dt>次回までに</dt><dd>${escapeHtml(l.next||"-")}</dd>
+      <dt>期限の変更</dt><dd>${escapeHtml(l.dueChange||"-")}</dd>
+    </dl>
+  </div>`;
+}
+
+// 折りたたみの開閉を、本体と見出し（キャレット）で必ず揃えて切り替える
+function setCollapse(bodyId, togId, open){
+  const body = document.getElementById(bodyId);
+  const tog = document.getElementById(togId);
+  if(body) body.classList.toggle("open", open);
+  if(tog) tog.classList.toggle("open", open);
+  // 折りたたみ中は高さを測れないため、開いた直後に再計算する
+  if(open && body) autoSizeTextareasIn(body);
+  return body;
+}
+
+function isOpen(id){
+  const el = document.getElementById(id);
+  return !!el && el.classList.contains("open");
+}
+
+function toggleLog(id){
+  setCollapse("log-"+id, "logtog-"+id, !isOpen("log-"+id));
+}
+
+function toggleLogForm(id){
+  setCollapse("logform-"+id, "logformtog-"+id, !isOpen("logform-"+id));
+}
+
+function toggleAttach(id){
+  setCollapse("attachwrap-"+id, "attachtog-"+id, !isOpen("attachwrap-"+id));
+}
+
+function addLog(id){
+  const item = items.find(i=>i.id===id);
+  const reporter = document.getElementById("lr-"+id).value.trim();
+  const progress = document.getElementById("lp-"+id).value.trim();
+  const issue = document.getElementById("li-"+id).value.trim();
+  const next = document.getElementById("ln-"+id).value.trim();
+  const dueChange = document.getElementById("ld-"+id).value.trim();
+  if(!reporter && !progress && !issue && !next && !dueChange) return;
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  item.weeklyLog = item.weeklyLog||[];
+  item.weeklyLog.push({date:dateStr, reporter, progress, issue, next, dueChange});
+  persistItem(item);
+  renderList();
+  // ログ欄は開いたまま、入力フォームは畳んで追加された記録がすぐ見えるようにする
+  setCollapse("log-"+id, "logtog-"+id, true);
+}
+
+function deleteLog(id, idx){
+  const item = items.find(i=>i.id===id);
+  item.weeklyLog.splice(idx,1);
+  persistItem(item);
+  renderList();
+  setCollapse("log-"+id, "logtog-"+id, true);
+}
+
+function updateField(id, field, value){
+  const item = items.find(i=>i.id===id);
+  item[field] = value;
+  persistItem(item);
+  renderSummary();
+  renderLocSummary();
+  renderRiskPanel();
+  if(field==="status" || field==="dueDate" || field==="location") renderList();
+  if(field==="location") renderTabs();
+}
+
+function handleLocationChange(id, selectEl){
+  const item = items.find(i=>i.id===id);
+  let val = selectEl.value;
+  if(val === "__new__"){
+    const name = (prompt("新しい拠点名を入力してください")||"").trim();
+    if(!name){ selectEl.value = item.location; return; }
+    val = name;
+  }
+  updateField(id, "location", val);
+}
+
+function clearMilestone(id){
+  const item = items.find(i=>i.id===id);
+  if(!item.milestoneNote) return;
+  updateField(id, "milestoneNote", "");
+  const input = document.querySelector(`#card-${id} .milestone-input`);
+  if(input) input.value = "";
+}
+
+// 削減コスト欄：表示は3桁カンマ区切り、保存は数値のまま
+function fmtCost(n){
+  return (n===null || n===undefined || n==="") ? "" : Number(n).toLocaleString("ja-JP");
+}
+
+// 入力しながらカンマを付け直す。カーソルは「左側にある数字の個数」を基準に戻す
+function formatCostInput(el){
+  const digitsBefore = (el.value.slice(0, el.selectionStart).match(/\d/g)||[]).length;
+  const digits = el.value.replace(/\D/g, "");
+  const formatted = digits ? Number(digits).toLocaleString("ja-JP") : "";
+  el.value = formatted;
+  let pos = 0, seen = 0;
+  while(pos < formatted.length && seen < digitsBefore){
+    if(/\d/.test(formatted[pos])) seen++;
+    pos++;
+  }
+  el.setSelectionRange(pos, pos);
+}
+
+function updateCostField(id, field, value){
+  const item = items.find(i=>i.id===id);
+  item.costSavings = item.costSavings || {annual:null,monthly:null,note:""};
+  if(field==="note"){
+    item.costSavings.note = value;
+  } else {
+    const digits = String(value).replace(/\D/g, "");
+    item.costSavings[field] = digits==="" ? null : Number(digits);
+  }
+  persistItem(item);
+}
+
+function addNewTask(){
+  const maxId = items.reduce((m,i)=>Math.max(m,i.id),0);
+  const newId = maxId+1;
+  const defaultLoc = filterLoc!=="すべて"? filterLoc : (getLocations()[0]||"");
+  const newItem = {
+    id:newId, location:defaultLoc, category:"", title:"新規タスク", assignee:"", dueDate:"",
+    milestoneNote:"", content:"", completionCriteria:"", originalLabel:"", status:"未着手",
+    latestUpdate:"", risk:"", weeklyLog:[], links:[]
+  };
+  items.push(newItem);
+  filterStatus.add("未着手");
+  saveState();
+  if(spEnabled){ spSaveItem(newItem).catch(e=>{ console.warn("SharePoint登録に失敗しました", e); setSyncStatus("error"); }); }
+  renderAll();
+  setTimeout(()=>{
+    const card = document.getElementById("card-"+newId);
+    if(card) card.scrollIntoView({behavior:"smooth", block:"center"});
+    const titleInput = document.querySelector(`#card-${newId} .title-input`);
+    if(titleInput){ titleInput.focus(); titleInput.select(); }
+  }, 50);
+}
+
+function deleteTask(id){
+  if(!confirm("このタスクを削除します。よろしいですか？（元に戻せません）")) return;
+  items = items.filter(i=>i.id!==id);
+  saveState();
+  if(spEnabled){ spDeleteItem(id).catch(e=>{ console.warn("SharePoint削除に失敗しました", e); setSyncStatus("error"); }); }
+  renderAll();
+}
+
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(items,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date();
+  const stamp = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  a.href = url; a.download = `factory_dashboard_${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data)) throw new Error("invalid");
+      const oldIds = items.map(i=>i.id);
+      items = data;
+      saveState();
+      if(spEnabled){
+        (async()=>{
+          for(const id of oldIds){ await spDeleteItem(id).catch(()=>{}); }
+          for(const it of items){ await spSaveItem(it).catch(()=>{}); }
+        })();
+      }
+      renderAll();
+    }catch(err){ alert("読み込みに失敗しました。JSON形式を確認してください。"); }
+  };
+  reader.readAsText(file);
+  evt.target.value = "";
+}
+
+function resetData(){
+  const msg = spEnabled
+    ? "SharePoint上の共有データも含めて、全員分のデータが初期状態に戻ります。本当によろしいですか？"
+    : "編集内容をすべて破棄し、初期データに戻します。よろしいですか？";
+  if(!confirm(msg)) return;
+  const oldIds = items.map(i=>i.id);
+  items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  saveState();
+  if(spEnabled){
+    (async()=>{
+      for(const id of oldIds){ await spDeleteItem(id).catch(()=>{}); }
+      for(const it of items){ await spSaveItem(it).catch(()=>{}); }
+    })();
+  }
+  renderAll();
+}
+
+function renderAll(){
+  renderSummary();
+  renderLocSummary();
+  renderRiskPanel();
+  renderTabs();
+  renderList();
+}
+
+// ---- 添付ファイル（クラウドリンク） ----
+function linkIcon(url){
+  try{
+    const host = new URL(url).hostname;
+    if(host.includes("drive.google.com") || host.includes("docs.google.com")) return "🟢";
+    if(host.includes("sharepoint.com") || host.includes("onedrive")) return "🔵";
+    if(host.includes("dropbox.com")) return "📦";
+    if(host.includes("box.com")) return "🟦";
+  }catch(e){}
+  return "🔗";
+}
+
+function addLink(itemId){
+  const labelEl = document.getElementById("al-"+itemId);
+  const urlEl = document.getElementById("au-"+itemId);
+  const label = labelEl.value.trim();
+  let url = urlEl.value.trim();
+  if(!url) return;
+  if(!/^https?:\/\//i.test(url)) url = "https://"+url;
+  try{ new URL(url); }catch(e){ alert("URLの形式が正しくありません"); return; }
+  const item = items.find(i=>i.id===itemId);
+  item.links = item.links||[];
+  item.links.push({label, url});
+  persistItem(item);
+  labelEl.value=""; urlEl.value="";
+  refreshAttachSection(itemId);
+}
+
+function removeLink(itemId, idx){
+  if(!confirm("この添付リンクを削除しますか？")) return;
+  const item = items.find(i=>i.id===itemId);
+  item.links.splice(idx,1);
+  persistItem(item);
+  refreshAttachSection(itemId);
+}
+
+// ---- 添付欄の描画（クラウドリンクのみ） ----
+function attachHtml(item){
+  const links = item.links||[];
+  const linksHtml = links.length? links.map((l,idx)=>`
+    <div class="attach-row">
+      <span class="attach-icon">${linkIcon(l.url)}</span>
+      <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label||l.url)}</a>
+      <span class="attach-url">${escapeHtml(l.url)}</span>
+      <span class="attach-del" onclick="removeLink(${item.id},${idx})">削除</span>
+    </div>`).join("") : `<div class="attach-empty">添付リンクはまだありません</div>`;
+
+  return `
+    <div class="attach-subtitle">クラウドリンク（全端末で共有されます）</div>
+    <div class="attach-list">${linksHtml}</div>
+    <div class="attach-form">
+      <input class="label" id="al-${item.id}" placeholder="表示名（例：現場写真）">
+      <input class="url" id="au-${item.id}" placeholder="https://drive.google.com/... など">
+      <button class="btn" onclick="addLink(${item.id})">＋ リンクを追加</button>
+    </div>`;
+}
+
+function refreshAttachSection(itemId){
+  const el = document.getElementById("attach-"+itemId);
+  const item = items.find(i=>i.id===itemId);
+  if(el && item){
+    el.innerHTML = attachHtml(item);
+    // 折りたたみ見出しの件数も更新する（キャレットは::beforeのため上書きされない）
+    const tog = document.getElementById("attachtog-"+itemId);
+    if(tog) tog.textContent = attachToggleLabel(item);
+  }
+}
+
+// ---- PowerPoint資料作成 ----
+const PPTX_NAVY = "1E2761", PPTX_TEXT = "222A4D", PPTX_MUTED = "6B7591", PPTX_BORDER = "E4E8F2";
+const PPTX_SHADOW = {type:"outer", color:PPTX_NAVY, opacity:0.1, blur:8, offset:2, angle:90};
+
+function pptxFmtDate(iso){
+  if(!iso) return "未設定";
+  const d = new Date(iso+"T00:00:00");
+  if(isNaN(d.getTime())) return "未設定";
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+// PowerPointが「コンテンツに問題」と判定しないよう、テキストを安全な文字列に正規化する
+// （制御文字の除去、異常な長文のトリミング）
+function safePptxText(value, maxLen){
+  let s = (value===null || value===undefined) ? "" : String(value);
+  // タブ・改行以外の制御文字（不可視のゴミ文字）を除去
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  const limit = maxLen || 600;
+  if(s.length > limit) s = s.slice(0, limit) + "…（全文はダッシュボードを参照）";
+  return s;
+}
+
+// http/https の絶対URLのみを許可する（それ以外はハイパーリンク化しない）
+function safePptxUrl(url){
+  try{
+    const u = new URL(String(url||""));
+    if(u.protocol==="http:" || u.protocol==="https:") return u.href;
+  }catch(e){}
+  return null;
+}
+
+const PPTX_FONT = "游ゴシック";
+const PPTX_INK = "3A3F4B";
+const PPTX_RULE = "E1E5EE";
+
+function pptxCard(slide, x, y, w, h){
+  slide.addShape("roundRect", {x, y, w, h, fill:{color:"FFFFFF"}, line:{color:"EDEFF5", width:1}, rectRadius:0.05, shadow:PPTX_SHADOW});
+}
+
+// 罫線（セクション間の仕切り線）
+function addDivider(slide, x, y, w){
+  slide.addShape("rect", {x, y, w, h:0.012, fill:{color:PPTX_RULE}, line:{type:"none"}});
+}
+
+// 全角文字を1emとして概算し、折り返し後の行数からテキストの必要高さ(インチ)を見積もる
+// 実際のレンダリングよりやや厳しめ（安全側）に取り、重なりが再発しないよう常に余裕を残す
+function estimateBodyHeight(text, widthIn, fontSizePt){
+  const SAFETY_WIDTH_FACTOR = 1.18;
+  const charWidthIn = (fontSizePt/72) * SAFETY_WIDTH_FACTOR;
+  const charsPerLine = Math.max(5, Math.floor(widthIn/charWidthIn));
+  const paras = String(text||"-").split(/\n/);
+  let lines = 0;
+  paras.forEach(p=>{ lines += Math.max(1, Math.ceil(p.length/charsPerLine)); });
+  const lineHeightIn = (fontSizePt/72)*1.4;
+  return lines*lineHeightIn + 0.08;
+}
+
+function headingHeight(fontSizePt){
+  return (fontSizePt/72)*1.3 + 0.1;
+}
+
+function estimateSectionHeight(text, widthIn, fontSizePt){
+  return headingHeight(fontSizePt) + estimateBodyHeight(text, widthIn, fontSizePt);
+}
+
+// 見出し（色付きアクセントバー＋ラベル）と本文を分けて配置する、見やすさ重視のセクション描画
+function addSectionBlock(slide, label, text, x, y, w, h, accentColor, fontSize){
+  const headH = headingHeight(fontSize);
+  slide.addShape("rect", {x, y:y+0.02, w:0.045, h:headH-0.14, fill:{color:accentColor}, line:{type:"none"}});
+  slide.addText(label, {x:x+0.16, y, w:w-0.16, h:headH, fontSize, bold:true, color:accentColor, fontFace:PPTX_FONT, valign:"top", margin:0});
+  slide.addText(text||"-", {x, y:y+headH, w, h:Math.max(0.2,h-headH), fontSize, color:PPTX_INK, fontFace:PPTX_FONT, valign:"top", lineSpacingMultiple:1.4, margin:0});
+}
+
+// 内容/完了条件/最新の進捗/リスクの4項目を、テキスト量に応じたフォントサイズと行の高さで配置する
+function computeItemLayout(item, innerW, colW, availH){
+  const candidates = [14, 13, 12, 11, 10, 9, 8];
+  const bottomReserve = 0.9; // フォントを縮小するか判断する際に確保したい最低限の下段スペース
+  const bottomFloor = 0.6;   // 最終的に下段へ割り当てる最低の高さ（カード外にはみ出さないよう抑える）
+  const rowGap = 0.28;
+  let chosen = null;
+  for(const fs of candidates){
+    const row1H = Math.max(estimateSectionHeight(item.content, innerW, fs), 0.5);
+    const h2L = estimateSectionHeight(item.completionCriteria, colW, fs);
+    const h2R = estimateSectionHeight(item.risk||"リスクなし", colW, fs);
+    const row2H = Math.max(h2L, h2R, 0.5);
+    const row3H = Math.max(estimateSectionHeight(item.latestUpdate, innerW, fs), 0.5);
+    const total = row1H+rowGap+row2H+rowGap+row3H+rowGap+bottomReserve;
+    chosen = {fs, row1H, row2H, row3H, rowGap, fits: total<=availH};
+    if(chosen.fits || fs===candidates[candidates.length-1]) break;
+  }
+  const used = chosen.row1H+chosen.rowGap+chosen.row2H+chosen.rowGap+chosen.row3H+chosen.rowGap;
+  chosen.bottomH = Math.max(bottomFloor, availH-used);
+  return chosen;
+}
+
+function addCostVisualization(slide, cost, x, y, w, h){
+  slide.addText("削減コストの可視化", {x, y, w, h:0.28, fontSize:12, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT, margin:0});
+  const hasData = cost && (cost.annual || cost.monthly);
+  if(!hasData){
+    slide.addText("コスト削減効果は未算出です", {x, y:y+0.3, w, h:h-0.3, fontSize:12, color:"9CA3AF", italic:true, fontFace:PPTX_FONT, valign:"middle", margin:0});
+    return;
+  }
+  const monthly = cost.monthly || Math.round((cost.annual||0)/12);
+  const annual = cost.annual || (monthly*12);
+  const colW = (w-0.3)/2;
+  slide.addText(`${monthly.toLocaleString()}円`, {x, y:y+0.34, w:colW, h:0.48, fontSize:24, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT, margin:0});
+  slide.addText("月間削減効果", {x, y:y+0.82, w:colW, h:0.26, fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
+  slide.addShape("rect", {x:x+colW+0.14, y:y+0.32, w:0.012, h:0.75, fill:{color:PPTX_RULE}, line:{type:"none"}});
+  slide.addText(`${annual.toLocaleString()}円`, {x:x+colW+0.3, y:y+0.34, w:colW, h:0.48, fontSize:24, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT, margin:0});
+  slide.addText("年間削減効果", {x:x+colW+0.3, y:y+0.82, w:colW, h:0.26, fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
+  const statsBottom = y+0.82+0.26; // 月間/年間の数値・キャプションが占める範囲の下端
+  if(cost.note && (y+h) - statsBottom >= 0.34){
+    slide.addText(cost.note, {x, y:statsBottom+0.06, w, h:(y+h)-statsBottom-0.06, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:PPTX_FONT, margin:0, valign:"top"});
+  }
+}
+
+async function addSideExtras(slide, item, x, y, w, h){
+  const links = (item.links||[]).map(l=>({label:l.label, url:safePptxUrl(l.url)})).filter(l=>l.url).slice(0,3);
+  let cy = y;
+  if(links.length){
+    slide.addText("🔗 関連資料（クリックで開く）", {x, y:cy, w, h:0.24, fontSize:10.5, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT, margin:0});
+    cy += 0.27;
+    links.forEach(l=>{
+      const label = safePptxText(l.label||l.url, 60);
+      const shortLabel = label.length>26? label.slice(0,25)+"…" : label;
+      slide.addText(shortLabel, {x, y:cy, w, h:0.25, fontSize:10.5, color:"1155CC", underline:true, fontFace:PPTX_FONT, hyperlink:{url:l.url}, margin:0});
+      cy += 0.27;
+    });
+  }
+}
+
+async function addItemSlide(pptx, rawItem){
+  const item = {
+    ...rawItem,
+    location: safePptxText(rawItem.location, 40),
+    category: safePptxText(rawItem.category, 40),
+    assignee: safePptxText(rawItem.assignee, 60),
+    title: safePptxText(rawItem.title, 80),
+    status: safePptxText(rawItem.status, 20),
+    milestoneNote: safePptxText(rawItem.milestoneNote, 120),
+    content: safePptxText(rawItem.content, 320),
+    completionCriteria: safePptxText(rawItem.completionCriteria, 320),
+    latestUpdate: safePptxText(rawItem.latestUpdate, 380),
+    risk: safePptxText(rawItem.risk, 320)
+  };
+
+  const slide = pptx.addSlide();
+  slide.background = {color:"F4F6FB"};
+
+  slide.addShape("roundRect", {x:0.55, y:0.4, w:3.2, h:0.5, fill:{color:PPTX_NAVY}, rectRadius:0.19});
+  slide.addText(item.location||"-", {x:0.55, y:0.4, w:3.2, h:0.5, align:"center", valign:"middle", fontSize:14, bold:true, color:"FFFFFF", fontFace:PPTX_FONT, margin:0});
+
+  const sc = STATUS_HEX[rawItem.status] || STATUS_HEX["未着手"];
+  slide.addShape("roundRect", {x:11.2, y:0.4, w:2.0, h:0.5, fill:{color:sc.bg}, line:{color:sc.border, width:1}, rectRadius:0.19});
+  slide.addText(item.status||"-", {x:11.2, y:0.4, w:2.0, h:0.5, align:"center", valign:"middle", fontSize:13, bold:true, color:sc.border, fontFace:PPTX_FONT, margin:0});
+
+  slide.addText(`ID ${item.id}　${item.title||""}`, {x:0.55, y:1.05, w:12.2, h:0.5, fontSize:23, bold:true, color:"1A1F36", fontFace:PPTX_FONT, margin:0});
+  slide.addText(`分類：${item.category||"-"}　｜　担当：${item.assignee||"-"}　｜　目標期限：${pptxFmtDate(item.dueDate)}`, {x:0.55, y:1.55, w:12.2, h:0.3, fontSize:13, color:PPTX_MUTED, fontFace:PPTX_FONT, margin:0});
+
+  let cardY = 1.95;
+  if(item.milestoneNote){
+    slide.addText(`📌 ${item.milestoneNote}`, {x:0.55, y:1.85, w:12.2, h:0.28, fontSize:11, color:"B45309", fontFace:PPTX_FONT, margin:0});
+    cardY = 2.18;
+  }
+
+  const cardX = 0.55, cardW = 12.2, cardH = 7.5-cardY-0.3;
+  pptxCard(slide, cardX, cardY, cardW, cardH);
+
+  const padX = cardX+0.4, innerW = cardW-0.8, gapX = 0.45, colW = (innerW-gapX)/2, rightX = padX+colW+gapX;
+  const topPad = 0.3, bottomPad = 0.3;
+  const availH = cardH - topPad - bottomPad;
+  const layout = computeItemLayout(item, innerW, colW, availH);
+  const fs = layout.fs;
+
+  let y = cardY+topPad;
+  addSectionBlock(slide, "何を（内容）", item.content, padX, y, innerW, layout.row1H, PPTX_NAVY, fs);
+
+  y += layout.row1H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
+  addSectionBlock(slide, "完了条件", item.completionCriteria, padX, y, colW, layout.row2H, "0F766E", fs);
+  addSectionBlock(slide, "リスク・対応", item.risk||"リスクなし", rightX, y, colW, layout.row2H, "B45309", fs);
+
+  y += layout.row2H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
+  addSectionBlock(slide, "最新の進捗", item.latestUpdate, padX, y, innerW, layout.row3H, PPTX_NAVY, fs);
+
+  y += layout.row3H + layout.rowGap*0.5;
+  addDivider(slide, padX, y, innerW);
+  y += layout.rowGap*0.5;
+  const bottomH = layout.bottomH;
+  addCostVisualization(slide, item.costSavings, padX, y, colW, bottomH);
+  await addSideExtras(slide, item, rightX, y, colW, bottomH);
+}
+
+function addAgendaSlide(pptx, locs, items){
+  const slide = pptx.addSlide();
+  slide.background = {color:"FFFFFF"};
+  slide.addText("本日ご報告する内容", {x:0.55, y:0.45, w:11, h:0.7, fontSize:40, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
+
+  const rows = [
+    {title:"全体サマリー", sub:`指摘事項${items.length}件の進捗状況（拠点別・ステータス別）`},
+    ...locs.map(loc=>({title:`${safePptxText(loc,40)}　進捗`, sub:`${items.filter(i=>i.location===loc).length}件のタスク進捗`}))
+  ];
+  rows.forEach((r,idx)=>{
+    const y = 1.55 + idx*0.88;
+    const num = String(idx+1).padStart(2,"0");
+    slide.addShape("ellipse", {x:0.55, y, w:0.62, h:0.62, fill:{color:PPTX_NAVY}});
+    slide.addText(num, {x:0.55, y, w:0.62, h:0.62, align:"center", valign:"middle", fontSize:18, bold:true, color:"FFFFFF", fontFace:PPTX_FONT});
+    slide.addText(r.title, {x:1.45, y:y-0.02, w:6.5, h:0.4, fontSize:18, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+    slide.addText(r.sub, {x:1.45, y:y+0.36, w:8.5, h:0.35, fontSize:14, color:PPTX_MUTED, fontFace:PPTX_FONT});
+  });
+}
+
+function addSummarySlide(pptx, locs, items){
+  const slide = pptx.addSlide();
+  slide.background = {color:"F4F6FB"};
+  slide.addText("全体サマリー", {x:0.55, y:0.1, w:8, h:0.55, fontSize:30, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
+  const today = new Date();
+  slide.addText(`指摘事項　全${items.length}件の進捗状況（${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}時点）`,
+    {x:0.55, y:0.63, w:10, h:0.35, fontSize:15, color:PPTX_MUTED, fontFace:PPTX_FONT});
+
+  const totalCardW = 1.75, tileGap = 0.18;
+  pptxCard(slide, 0.55, 1.1, totalCardW, 1.45);
+  slide.addText(String(items.length), {x:0.55, y:1.18, w:totalCardW, h:0.75, align:"center", fontSize:38, bold:true, color:PPTX_NAVY, fontFace:PPTX_FONT});
+  slide.addText("合計", {x:0.55, y:1.95, w:totalCardW, h:0.35, align:"center", fontSize:13, color:PPTX_MUTED, fontFace:PPTX_FONT});
+
+  const tilesX = 0.55+totalCardW+tileGap;
+  const tileW = (12.2-totalCardW-tileGap*7)/6;
+  STATUS_STAGES.forEach((s,i)=>{
+    const x = tilesX + i*(tileW+tileGap);
+    const sc = STATUS_HEX[s];
+    const n = items.filter(it=>it.status===s).length;
+    pptxCard(slide, x, 1.1, tileW, 1.45);
+    slide.addText(String(n), {x, y:1.18, w:tileW, h:0.75, align:"center", fontSize:32, bold:true, color:sc.border, fontFace:PPTX_FONT});
+    slide.addText(s, {x, y:1.95, w:tileW, h:0.5, align:"center", fontSize:10.5, color:PPTX_MUTED, fontFace:PPTX_FONT});
+  });
+
+  slide.addText("拠点別　進捗状況", {x:0.55, y:2.85, w:5.5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  let ly = 3.35;
+  locs.forEach(loc=>{
+    const list = items.filter(i=>i.location===loc);
+    const total = list.length || 1;
+    slide.addText(`${safePptxText(loc,40)}（${list.length}件）`, {x:0.55, y:ly, w:5.5, h:0.3, fontSize:12.5, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+    let bx = 0.55;
+    const barW = 5.5, barH = 0.22;
+    STATUS_STAGES.forEach(s=>{
+      const n = list.filter(i=>i.status===s).length;
+      if(!n) return;
+      const w = barW*(n/total);
+      slide.addShape("rect", {x:bx, y:ly+0.32, w, h:barH, fill:{color:STATUS_HEX[s].border}, line:{type:"none"}});
+      bx += w;
+    });
+    slide.addText(`完了 ${list.filter(i=>i.status==="完了").length}/${list.length}`, {x:0.55, y:ly+0.56, w:5.5, h:0.25, fontSize:10, color:PPTX_MUTED, fontFace:PPTX_FONT});
+    ly += 1.0;
+  });
+
+  slide.addText("全体コスト削減状況", {x:7.4, y:2.85, w:5, h:0.35, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  let totalMonthly = 0, totalAnnual = 0;
+  items.forEach(i=>{
+    const cs = i.costSavings;
+    if(cs && (cs.monthly||cs.annual)){
+      totalMonthly += cs.monthly || Math.round((cs.annual||0)/12);
+      totalAnnual += cs.annual || ((cs.monthly||0)*12);
+    }
+  });
+  slide.addText("月間", {x:7.4, y:3.45, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText(`${totalMonthly.toLocaleString()}円`, {x:8.4, y:3.4, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText("年間", {x:7.4, y:4.15, w:1, h:0.4, fontSize:15, bold:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText(`${totalAnnual.toLocaleString()}円`, {x:8.4, y:4.1, w:4, h:0.55, fontSize:32, bold:true, underline:true, color:PPTX_TEXT, fontFace:PPTX_FONT});
+  slide.addText("※各項目の「削減コスト」欄に入力された金額の合計です", {x:7.4, y:4.75, w:5, h:0.3, fontSize:9.5, italic:true, color:"9CA3AF", fontFace:PPTX_FONT});
+}
+
+async function generatePptx(){
+  if(typeof PptxGenJS === "undefined"){
+    alert("PowerPoint出力にはインターネット接続が必要です。接続環境を確認してください。");
+    return;
+  }
+  const btn = document.getElementById("pptxBtn");
+  const origLabel = btn.textContent;
+  btn.textContent = "作成中…";
+  btn.disabled = true;
+  try{
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({name:"WIDE", width:13.33, height:7.5});
+    pptx.layout = "WIDE";
+    const locs = getLocations();
+
+    const cover = pptx.addSlide();
+    cover.background = {color:PPTX_NAVY};
+    cover.addText("商品管理部　工場改善進捗報告", {x:0.9, y:2.5, w:11.5, h:0.9, fontSize:32, bold:true, color:"FFFFFF", fontFace:PPTX_FONT});
+    cover.addText("視察指摘事項　アクションプラン進捗", {x:0.9, y:3.3, w:11.5, h:0.5, fontSize:18, color:"CADCFC", fontFace:PPTX_FONT});
+    cover.addText(`対象拠点：${locs.map(l=>safePptxText(l,40)).join("／")}`, {x:0.9, y:4.0, w:11.5, h:0.4, fontSize:13, color:"CADCFC", fontFace:PPTX_FONT});
+    const today = new Date();
+    cover.addText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 出力`, {x:0.9, y:6.6, w:6, h:0.4, fontSize:12, color:"CADCFC", fontFace:PPTX_FONT});
+
+    addAgendaSlide(pptx, locs, items);
+    addSummarySlide(pptx, locs, items);
+
+    const sorted = items.slice().sort((a,b)=>{
+      const la = locs.indexOf(a.location), lb = locs.indexOf(b.location);
+      return la!==lb? la-lb : a.id-b.id;
+    });
+    const skipped = [];
+    for(const item of sorted){
+      try{
+        await addItemSlide(pptx, item);
+      }catch(e){
+        console.warn("スライド作成をスキップしました（データに問題がある可能性）", item.id, e);
+        skipped.push(item.id);
+      }
+    }
+    if(skipped.length){
+      console.warn(`ID ${skipped.join(", ")} のスライドを作成できませんでした`);
+    }
+
+    const stamp = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+    await pptx.writeFile({fileName:`工場改善進捗報告_${stamp}.pptx`});
+    if(skipped.length){
+      alert(`一部の項目（ID ${skipped.join(", ")}）はデータの問題によりスライドを作成できませんでした。それ以外は正常に出力されています。`);
+    }
+  }catch(e){
+    console.error(e);
+    alert("PowerPoint資料の作成に失敗しました。もう一度お試しください。");
+  }finally{
+    btn.textContent = origLabel;
+    btn.disabled = false;
+  }
+}
+
+document.getElementById("searchBox").addEventListener("input", renderList);
+
+(async function init(){
+  renderAll();
+  initSharePointSync();
+})();
+</script>
+</body>
+</html>
